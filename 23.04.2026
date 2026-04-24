@@ -42,7 +42,7 @@
       .hero-brand-copy h1{font-size:38px!important;}
       .hero-brand-copy div{font-size:22px!important;}
       .hero-brand{gap:14px!important;}
-      #businessLogo{width:230px!important;}
+      #businessLogo{width:265px!important;}
 
     }
 
@@ -74,14 +74,28 @@
       display:none !important;
     }
     #businessLogo{
-      width:min(300px,70vw);
+      width:min(340px,76vw);
       max-width:100%;
       height:auto;
       object-fit:contain;
+      animation: logoFloatClient 3.8s ease-in-out infinite;
+      filter:drop-shadow(0 12px 28px rgba(0,0,0,.28));
+      will-change: transform;
+    }
+
+    @keyframes logoFloatClient{
+      0%{transform:translateY(0px);}
+      25%{transform:translateY(-6px);}
+      50%{transform:translateY(0px);}
+      75%{transform:translateY(-3px);}
+      100%{transform:translateY(0px);}
     }
     @media (max-width:480px){
       .hero-brand{gap:12px;padding-top:2px;}
-      #businessLogo{width:min(240px,72vw);}
+      #businessLogo{
+        width:min(270px,78vw);
+        animation-duration:4.2s;
+      }
     }
 
     .screen{display:none}
@@ -116,7 +130,7 @@
     .logo-wrap img{
       position:relative;
       z-index:1;
-      width:320px;
+      width:360px;
       max-width:90%;
       display:block;
       margin:0 auto;
@@ -128,7 +142,7 @@
 
     @media (max-width:480px){
       .logo-wrap{min-height:180px;padding:14px 10px;border-radius:24px;}
-      .logo-wrap img{width:250px;}
+      .logo-wrap img{width:285px;}
     }
 
     .card{
@@ -551,7 +565,9 @@
     .hour-row:hover{border-color:rgba(215,180,109,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.03),0 10px 24px rgba(0,0,0,.12)}
     .hour-row.is-closed input[type="time"]{pointer-events:none}
     .service-builder{display:grid;gap:8px}
-    .service-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+    .service-row{display:grid;grid-template-columns:minmax(0,1fr) 55px auto auto;gap:8px;align-items:center}
+    .service-price-label{color:#f7e7c3;font-size:14px;font-weight:700;text-align:center;white-space:nowrap}
+    .service-price-input{text-align:center}
     .service-row button{margin:0;border:none;border-radius:14px;padding:12px 10px;cursor:pointer;background:#2b1212;color:#ffb0b0;border:1px solid rgba(255,123,123,.22)}
 
     #settingsPanel .settings-field label{display:none}
@@ -579,12 +595,12 @@
       .settings-two-col{grid-template-columns:1fr;}
     }
 
-    @media (max-width:640px){.slots-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}.time-chip{min-height:40px;font-size:13px;border-radius:13px;}.hour-times,.settings-actions,.service-row{grid-template-columns:1fr;}.hour-row{padding:14px;gap:12px;}.hour-row-top{justify-items:center;}.closed-toggle{justify-content:center;width:100%;max-width:180px;}}
+    @media (max-width:640px){.slots-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}.time-chip{min-height:40px;font-size:13px;border-radius:13px;}.hour-times,.settings-actions{grid-template-columns:1fr;}.hour-row{padding:14px;gap:12px;}.hour-row-top{justify-items:center;}.closed-toggle{justify-content:center;width:100%;max-width:180px;}}
     @media (max-width:420px){.slots-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}.time-chip{min-height:38px;padding:7px 5px;font-size:20px;border-radius:12px;}.day-chip{min-width:84px;padding:11px 8px}.success-btn{width:100%}.owner-shell-head{gap:8px}.owner-shell-title h2{font-size:16px}.owner-shell-title p{font-size:12px}.owner-back-btn{padding:10px 12px!important;font-size:12px!important}.owner-tab{padding:12px 8px;font-size:13px}}
   </style>
 </head>
 <body>
-  <div id="loader"><img id="loaderLogo" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA3MDAgNzAwJz4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0nZycgeDE9JzAnIHkxPScwJyB4Mj0nMScgeTI9JzEnPgogICAgICA8c3RvcCBvZmZzZXQ9JzAlJyBzdG9wLWNvbG9yPScjZDdiNDZkJy8+CiAgICAgIDxzdG9wIG9mZnNldD0nMTAwJScgc3RvcC1jb2xvcj0nIzhmNmEzMScvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9JzcwMCcgaGVpZ2h0PSc3MDAnIHJ4PScxNDAnIGZpbGw9JyMxMjE2MWYnLz4KICA8Y2lyY2xlIGN4PSczNTAnIGN5PScyNzAnIHI9JzEyMCcgZmlsbD0nbm9uZScgc3Ryb2tlPSd1cmwoI2cpJyBzdHJva2Utd2lkdGg9JzI0Jy8+CiAgPHJlY3QgeD0nMjIwJyB5PSc0MzAnIHdpZHRoPScyNjAnIGhlaWdodD0nMjgnIHJ4PScxNCcgZmlsbD0ndXJsKCNnKScgb3BhY2l0eT0nMC45NScvPgogIDxyZWN0IHg9JzI2MCcgeT0nNDkwJyB3aWR0aD0nMTgwJyBoZWlnaHQ9JzIwJyByeD0nMTAnIGZpbGw9JyNjOWEyNWEnIG9wYWNpdHk9JzAuNzUnLz4KPC9zdmc+" alt="לוגו"></div>
+  <div id="loader"><img id="loaderLogo" src="logo.png" alt="לוגו"></div>
 
   <div class="app">
     <section id="clientScreen" class="screen active">
@@ -751,7 +767,7 @@
                   <div class="settings-upload-row">
                     <div>
                       <div class="logo-preview-wrap">
-                        <img id="settingsLogoPreview" class="logo-preview" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA3MDAgNzAwJz4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0nZycgeDE9JzAnIHkxPScwJyB4Mj0nMScgeTI9JzEnPgogICAgICA8c3RvcCBvZmZzZXQ9JzAlJyBzdG9wLWNvbG9yPScjZDdiNDZkJy8+CiAgICAgIDxzdG9wIG9mZnNldD0nMTAwJScgc3RvcC1jb2xvcj0nIzhmNmEzMScvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9JzcwMCcgaGVpZ2h0PSc3MDAnIHJ4PScxNDAnIGZpbGw9JyMxMjE2MWYnLz4KICA8Y2lyY2xlIGN4PSczNTAnIGN5PScyNzAnIHI9JzEyMCcgZmlsbD0nbm9uZScgc3Ryb2tlPSd1cmwoI2cpJyBzdHJva2Utd2lkdGg9JzI0Jy8+CiAgPHJlY3QgeD0nMjIwJyB5PSc0MzAnIHdpZHRoPScyNjAnIGhlaWdodD0nMjgnIHJ4PScxNCcgZmlsbD0ndXJsKCNnKScgb3BhY2l0eT0nMC45NScvPgogIDxyZWN0IHg9JzI2MCcgeT0nNDkwJyB3aWR0aD0nMTgwJyBoZWlnaHQ9JzIwJyByeD0nMTAnIGZpbGw9JyNjOWEyNWEnIG9wYWNpdHk9JzAuNzUnLz4KPC9zdmc+" alt="תצוגת לוגו">
+                        <img id="settingsLogoPreview" class="logo-preview" src="logo.png" alt="תצוגת לוגו">
                       </div>
                       <div class="upload-box">
                         <label class="upload-trigger" for="settingsLogoInput">העלאת לוגו ⤴</label>
@@ -761,12 +777,12 @@
                     </div>
                     <div>
                       <div class="settings-preview-box cover">
-                        <img id="settingsHeroPreview" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxOTIwIDEwODAnPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSdiZycgeDE9JzAnIHkxPScwJyB4Mj0nMScgeTI9JzEnPgogICAgICA8c3RvcCBvZmZzZXQ9JzAlJyBzdG9wLWNvbG9yPScjMGIwZTE0Jy8+CiAgICAgIDxzdG9wIG9mZnNldD0nNTUlJyBzdG9wLWNvbG9yPScjMTAxNTFkJy8+CiAgICAgIDxzdG9wIG9mZnNldD0nMTAwJScgc3RvcC1jb2xvcj0nIzE3MWMyNicvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0nZ2xvdzEnIGN4PScyMCUnIGN5PScyMCUnIHI9JzM1JSc+CiAgICAgIDxzdG9wIG9mZnNldD0nMCUnIHN0b3AtY29sb3I9JyNkN2I0NmQnIHN0b3Atb3BhY2l0eT0nMC4yMCcvPgogICAgICA8c3RvcCBvZmZzZXQ9JzEwMCUnIHN0b3AtY29sb3I9JyNkN2I0NmQnIHN0b3Atb3BhY2l0eT0nMCcvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0nZ2xvdzInIGN4PSc4MCUnIGN5PSczMCUnIHI9JzMwJSc+CiAgICAgIDxzdG9wIG9mZnNldD0nMCUnIHN0b3AtY29sb3I9JyNmZmZmZmYnIHN0b3Atb3BhY2l0eT0nMC4wOCcvPgogICAgICA8c3RvcCBvZmZzZXQ9JzEwMCUnIHN0b3AtY29sb3I9JyNmZmZmZmYnIHN0b3Atb3BhY2l0eT0nMCcvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9JzE5MjAnIGhlaWdodD0nMTA4MCcgZmlsbD0ndXJsKCNiZyknLz4KICA8cmVjdCB3aWR0aD0nMTkyMCcgaGVpZ2h0PScxMDgwJyBmaWxsPSd1cmwoI2dsb3cxKScvPgogIDxyZWN0IHdpZHRoPScxOTIwJyBoZWlnaHQ9JzEwODAnIGZpbGw9J3VybCgjZ2xvdzIpJy8+Cjwvc3ZnPg==" alt="תמונת רקע">
+                        <img id="settingsHeroPreview" src="background-behind-logo.png" alt="תמונת רקע">
                       </div>
                       <div class="upload-box">
                         <label class="upload-trigger" for="settingsHeroInput">העלאת תמונת רקע ⤴</label>
                         <input id="settingsHeroInput" type="file" accept="image/png,image/jpeg,image/webp,image/*">
-                        <div class="upload-meta">רקע למסך העליון<br>מומלץ: 1920×1080 • עובר התאמה אוטומטית</div>
+                        <div class="upload-meta">רקע למסך העליון<br>מותאם אוטומטית למסגרת העליונה</div>
                       </div>
                     </div>
                   </div>
@@ -960,7 +976,7 @@
       שם עסק, לוגו, שעות, שירותים, קוד מנהל ו־Firebase.
     */
     const BUSINESS_TEMPLATE = {
-      businessId: 'clean-barber-template-v2',
+      businessId: 'clean-barber-template-v3',
       businessName: '',
       businessSubtitle: '',
       businessTypeLabel: 'מספרה',
@@ -968,8 +984,8 @@
       whatsappNumber: '',
       businessAddress: '',
       bookingTitle: 'קביעת תור!',
-      logoSrc: `data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA3MDAgNzAwJz4KICA8ZGVmcz4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0nZycgeDE9JzAnIHkxPScwJyB4Mj0nMScgeTI9JzEnPgogICAgICA8c3RvcCBvZmZzZXQ9JzAlJyBzdG9wLWNvbG9yPScjZDdiNDZkJy8+CiAgICAgIDxzdG9wIG9mZnNldD0nMTAwJScgc3RvcC1jb2xvcj0nIzhmNmEzMScvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9JzcwMCcgaGVpZ2h0PSc3MDAnIHJ4PScxNDAnIGZpbGw9JyMxMjE2MWYnLz4KICA8Y2lyY2xlIGN4PSczNTAnIGN5PScyNzAnIHI9JzEyMCcgZmlsbD0nbm9uZScgc3Ryb2tlPSd1cmwoI2cpJyBzdHJva2Utd2lkdGg9JzI0Jy8+CiAgPHJlY3QgeD0nMjIwJyB5PSc0MzAnIHdpZHRoPScyNjAnIGhlaWdodD0nMjgnIHJ4PScxNCcgZmlsbD0ndXJsKCNnKScgb3BhY2l0eT0nMC45NScvPgogIDxyZWN0IHg9JzI2MCcgeT0nNDkwJyB3aWR0aD0nMTgwJyBoZWlnaHQ9JzIwJyByeD0nMTAnIGZpbGw9JyNjOWEyNWEnIG9wYWNpdHk9JzAuNzUnLz4KPC9zdmc+`,
-      heroBg: `data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxOTIwIDEwODAnPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSdiZycgeDE9JzAnIHkxPScwJyB4Mj0nMScgeTI9JzEnPgogICAgICA8c3RvcCBvZmZzZXQ9JzAlJyBzdG9wLWNvbG9yPScjMGIwZTE0Jy8+CiAgICAgIDxzdG9wIG9mZnNldD0nNTUlJyBzdG9wLWNvbG9yPScjMTAxNTFkJy8+CiAgICAgIDxzdG9wIG9mZnNldD0nMTAwJScgc3RvcC1jb2xvcj0nIzE3MWMyNicvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0nZ2xvdzEnIGN4PScyMCUnIGN5PScyMCUnIHI9JzM1JSc+CiAgICAgIDxzdG9wIG9mZnNldD0nMCUnIHN0b3AtY29sb3I9JyNkN2I0NmQnIHN0b3Atb3BhY2l0eT0nMC4yMCcvPgogICAgICA8c3RvcCBvZmZzZXQ9JzEwMCUnIHN0b3AtY29sb3I9JyNkN2I0NmQnIHN0b3Atb3BhY2l0eT0nMCcvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0nZ2xvdzInIGN4PSc4MCUnIGN5PSczMCUnIHI9JzMwJSc+CiAgICAgIDxzdG9wIG9mZnNldD0nMCUnIHN0b3AtY29sb3I9JyNmZmZmZmYnIHN0b3Atb3BhY2l0eT0nMC4wOCcvPgogICAgICA8c3RvcCBvZmZzZXQ9JzEwMCUnIHN0b3AtY29sb3I9JyNmZmZmZmYnIHN0b3Atb3BhY2l0eT0nMCcvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9JzE5MjAnIGhlaWdodD0nMTA4MCcgZmlsbD0ndXJsKCNiZyknLz4KICA8cmVjdCB3aWR0aD0nMTkyMCcgaGVpZ2h0PScxMDgwJyBmaWxsPSd1cmwoI2dsb3cxKScvPgogIDxyZWN0IHdpZHRoPScxOTIwJyBoZWlnaHQ9JzEwODAnIGZpbGw9J3VybCgjZ2xvdzIpJy8+Cjwvc3ZnPg==`,
+      logoSrc: 'logo.png',
+      heroBg: 'background-behind-logo.png',
       ownerCode: '1234',
       businessDescription: '',
       importantNotice: '',
@@ -1142,24 +1158,42 @@
       currentBusinessSettings.services.forEach((service, index) => {
         const row = document.createElement('div');
         row.className = 'service-row';
+
+        const existingText = String(service.value || service.label || '');
+        let desc = existingText;
+        let price = '';
+        const match = existingText.match(/^(.*?)\s*-\s*₪?(\d+)$/);
+        if(match){
+          desc = match[1].trim();
+          price = match[2].trim();
+        }
+
         row.innerHTML = `
-          <input type="text" value="${escapeHtml(service.value || service.label)}" placeholder="למשל: תספורת מבוגר - ₪60" data-role="service">
+          <input type="text" value="${escapeHtml(desc)}" placeholder="למשל: תספורת מבוגר" data-role="service-desc">
+          <input type="number" class="service-price-input" value="${escapeHtml(price)}" placeholder="60" data-role="service-price">
+          <div class="service-price-label">ש"ח</div>
           <button type="button" data-role="delete">מחק</button>
         `;
-        const serviceInput = row.querySelector('[data-role="service"]');
+
+        const descInput = row.querySelector('[data-role="service-desc"]');
+        const priceInput = row.querySelector('[data-role="service-price"]');
         const deleteBtn = row.querySelector('[data-role="delete"]');
+
         const syncService = () => {
-          const value = serviceInput.value.trim();
-          currentBusinessSettings.services[index] = {
-            label: value,
-            value
-          };
+          const descVal = descInput.value.trim();
+          const priceVal = priceInput.value.trim();
+          const finalValue = descVal ? (priceVal ? `${descVal} - ₪${priceVal}` : descVal) : '';
+          currentBusinessSettings.services[index] = { label: finalValue, value: finalValue };
         };
-        serviceInput.addEventListener('input', syncService);
+
+        descInput.addEventListener('input', syncService);
+        priceInput.addEventListener('input', syncService);
+
         deleteBtn.addEventListener('click', () => {
           currentBusinessSettings.services.splice(index, 1);
           renderServiceBuilder();
         });
+
         wrap.appendChild(row);
       });
     }
@@ -1832,14 +1866,27 @@
       return canvas.toDataURL(outputType, quality);
     }
 
+    function getHeroBackgroundTargetSize(){
+      const heroWrap = document.querySelector('.logo-wrap');
+      const fallbackWidth = 1600;
+      const fallbackHeight = 900;
+      if(!heroWrap) return { width: fallbackWidth, height: fallbackHeight };
+
+      const rect = heroWrap.getBoundingClientRect();
+      const width = Math.max(900, Math.round((rect.width || fallbackWidth) * 3));
+      const height = Math.max(420, Math.round((rect.height || fallbackHeight) * 3));
+      return { width, height };
+    }
+
     async function handleSettingsImageChange(inputId, key){
       const input = document.getElementById(inputId);
       const file = input.files && input.files[0];
       if(!file) return;
       try {
+        const heroSize = getHeroBackgroundTargetSize();
         const dataUrl = key === 'logoSrc'
           ? await optimizeImageFile(file, { maxWidth: 900, maxHeight: 900, outputType: 'image/webp', quality: 0.92, mode: 'contain' })
-          : await optimizeImageFile(file, { maxWidth: 1920, maxHeight: 1080, outputType: 'image/webp', quality: 0.88, mode: 'cover' });
+          : await optimizeImageFile(file, { maxWidth: heroSize.width, maxHeight: heroSize.height, outputType: 'image/webp', quality: 0.9, mode: 'cover' });
         persistBusinessSettings({ [key]: dataUrl });
         applyBusinessTemplate();
         input.value = '';
