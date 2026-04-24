@@ -565,7 +565,9 @@
     .hour-row:hover{border-color:rgba(215,180,109,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.03),0 10px 24px rgba(0,0,0,.12)}
     .hour-row.is-closed input[type="time"]{pointer-events:none}
     .service-builder{display:grid;gap:8px}
-    .service-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+    .service-row{display:grid;grid-template-columns:minmax(0,1fr) 55px auto auto;gap:8px;align-items:center}
+    .service-price-label{color:#f7e7c3;font-size:14px;font-weight:700;text-align:center;white-space:nowrap}
+    .service-price-input{text-align:center}
     .service-row button{margin:0;border:none;border-radius:14px;padding:12px 10px;cursor:pointer;background:#2b1212;color:#ffb0b0;border:1px solid rgba(255,123,123,.22)}
 
     #settingsPanel .settings-field label{display:none}
@@ -593,7 +595,7 @@
       .settings-two-col{grid-template-columns:1fr;}
     }
 
-    @media (max-width:640px){.slots-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}.time-chip{min-height:40px;font-size:13px;border-radius:13px;}.hour-times,.settings-actions,.service-row{grid-template-columns:1fr;}.hour-row{padding:14px;gap:12px;}.hour-row-top{justify-items:center;}.closed-toggle{justify-content:center;width:100%;max-width:180px;}}
+    @media (max-width:640px){.slots-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}.time-chip{min-height:40px;font-size:13px;border-radius:13px;}.hour-times,.settings-actions{grid-template-columns:1fr;}.hour-row{padding:14px;gap:12px;}.hour-row-top{justify-items:center;}.closed-toggle{justify-content:center;width:100%;max-width:180px;}}
     @media (max-width:420px){.slots-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}.time-chip{min-height:38px;padding:7px 5px;font-size:20px;border-radius:12px;}.day-chip{min-width:84px;padding:11px 8px}.success-btn{width:100%}.owner-shell-head{gap:8px}.owner-shell-title h2{font-size:16px}.owner-shell-title p{font-size:12px}.owner-back-btn{padding:10px 12px!important;font-size:12px!important}.owner-tab{padding:12px 8px;font-size:13px}}
   </style>
 </head>
@@ -1156,24 +1158,42 @@
       currentBusinessSettings.services.forEach((service, index) => {
         const row = document.createElement('div');
         row.className = 'service-row';
+
+        const existingText = String(service.value || service.label || '');
+        let desc = existingText;
+        let price = '';
+        const match = existingText.match(/^(.*?)\s*-\s*₪?(\d+)$/);
+        if(match){
+          desc = match[1].trim();
+          price = match[2].trim();
+        }
+
         row.innerHTML = `
-          <input type="text" value="${escapeHtml(service.value || service.label)}" placeholder="למשל: תספורת מבוגר - ₪60" data-role="service">
+          <input type="text" value="${escapeHtml(desc)}" placeholder="למשל: תספורת מבוגר" data-role="service-desc">
+          <input type="number" class="service-price-input" value="${escapeHtml(price)}" placeholder="60" data-role="service-price">
+          <div class="service-price-label">ש"ח</div>
           <button type="button" data-role="delete">מחק</button>
         `;
-        const serviceInput = row.querySelector('[data-role="service"]');
+
+        const descInput = row.querySelector('[data-role="service-desc"]');
+        const priceInput = row.querySelector('[data-role="service-price"]');
         const deleteBtn = row.querySelector('[data-role="delete"]');
+
         const syncService = () => {
-          const value = serviceInput.value.trim();
-          currentBusinessSettings.services[index] = {
-            label: value,
-            value
-          };
+          const descVal = descInput.value.trim();
+          const priceVal = priceInput.value.trim();
+          const finalValue = descVal ? (priceVal ? `${descVal} - ₪${priceVal}` : descVal) : '';
+          currentBusinessSettings.services[index] = { label: finalValue, value: finalValue };
         };
-        serviceInput.addEventListener('input', syncService);
+
+        descInput.addEventListener('input', syncService);
+        priceInput.addEventListener('input', syncService);
+
         deleteBtn.addEventListener('click', () => {
           currentBusinessSettings.services.splice(index, 1);
           renderServiceBuilder();
         });
+
         wrap.appendChild(row);
       });
     }
