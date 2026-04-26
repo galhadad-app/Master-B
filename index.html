@@ -687,6 +687,8 @@
 @media(max-width:640px){.stats-soft-summary{grid-template-columns:1fr 1fr}.stats-soft-summary .stats-soft-card:first-child{grid-column:1/-1}.stats-soft-charts{grid-template-columns:1fr}.stats-soft-chart{padding:13px;min-height:104px}.soft-donut{width:76px;height:76px;flex-basis:76px}}
 
 </style>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d1016">
 </head>
 <body>
   <div id="loader"><img id="loaderLogo" src="logo.png" alt="לוגו"></div>
@@ -729,6 +731,15 @@
               </svg>
             </span>
           </a>
+
+          <a id="installAppBtn" class="contact-action" href="javascript:void(0)" aria-label="התקן אפליקציה" title="התקן אפליקציה">
+            <span class="contact-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                <path d="M17 1H7C5.9 1 5 1.9 5 3V21C5 22.1 5.9 23 7 23H17C18.1 23 19 22.1 19 21V3C19 1.9 18.1 1 17 1ZM12 20C11.17 20 10.5 19.33 10.5 18.5C10.5 17.67 11.17 17 12 17C12.83 17 13.5 17.67 13.5 18.5C13.5 19.33 12.83 20 12 20ZM17 15H7V4H17V15Z"/>
+              </svg>
+            </span>
+          </a>
+
         </div>
       </section>
 
@@ -2603,6 +2614,28 @@ document.getElementById('bookBtn').addEventListener('click', bookAppointment);
 
   window.updateNewCustomersThisMonthStat = updateNewCustomersThisMonthStat;
 })();
+</script>
+
+
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('installAppBtn');
+  if(!btn) return;
+  btn.addEventListener('click', async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+    } else {
+      alert("באייפון: לחץ שיתוף → הוסף למסך הבית");
+    }
+  });
+});
 </script>
 
 </body>
