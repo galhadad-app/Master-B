@@ -74,7 +74,7 @@
       display:none !important;
     }
     #businessLogo{
-      width:min(340px,76vw);
+      width:min(430px,86vw);
       max-width:100%;
       height:auto;
       object-fit:contain;
@@ -93,7 +93,7 @@
     @media (max-width:480px){
       .hero-brand{gap:12px;padding-top:2px;}
       #businessLogo{
-        width:min(270px,78vw);
+        width:min(340px,86vw);
         animation-duration:4.2s;
       }
     }
@@ -120,17 +120,23 @@
     }
 
     .logo-wrap::after{
-      content:"";
-      position:absolute;
-      inset:0;
-      background:radial-gradient(circle at center, rgba(215,180,109,.12), transparent 48%);
-      pointer-events:none;
+      content:none !important;
+      display:none !important;
+      background:none !important;
     }
+    .logo-wrap.no-hero-bg{
+      background:linear-gradient(180deg, rgba(18,22,31,.96), rgba(13,18,27,.96));
+    }
+    .logo-wrap.no-hero-bg::after{display:none}
+    .business-logo-hidden{display:none !important}
+    #loader.no-logo img{display:none}
+    #loader.no-logo::after{content:"";width:54px;height:54px;border-radius:50%;border:3px solid rgba(215,180,109,.18);border-top-color:var(--gold);animation:loaderSpin .9s linear infinite}
+    @keyframes loaderSpin{to{transform:rotate(360deg)}}
 
     .logo-wrap img{
       position:relative;
       z-index:1;
-      width:360px;
+      width:430px;
       max-width:90%;
       display:block;
       margin:0 auto;
@@ -142,7 +148,7 @@
 
     @media (max-width:480px){
       .logo-wrap{min-height:180px;padding:14px 10px;border-radius:24px;}
-      .logo-wrap img{width:285px;}
+      .logo-wrap img{width:340px;}
     }
 
     .card{
@@ -449,6 +455,8 @@
     .customers-search-wrap{margin:4px 0 12px;}
     .customers-search-label{display:block;margin:0 4px 6px;color:var(--muted);font-size:12px;}
     .customers-search-input{width:100%;border:none;outline:none;border-radius:18px;padding:14px;background:#0f131b;color:var(--text);border:1px solid var(--line);font-size:14px;}
+    .customers-total{margin:0 4px 10px;color:rgba(244,241,234,.58);font-size:12px;font-weight:700;letter-spacing:.01em;}
+    .customers-total strong{color:#f0d89f;font-size:13px;font-weight:900;}
 
     .details-grid{display:grid;gap:0;margin-top:10px}
     .detail-box{background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,.06);border-radius:0;padding:12px 2px;box-shadow:none;}
@@ -574,6 +582,21 @@
     .settings-box textarea{width:100%;border:none;outline:none;border-radius:18px;padding:14px;background:#0f131b;color:var(--text);border:1px solid rgba(255,255,255,.08);font-size:14px;font-family:inherit;min-height:92px;resize:vertical}
     .settings-two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .logo-preview-wrap{display:flex;align-items:center;justify-content:center;padding:16px;border-radius:18px;background:#0b1119;border:1px dashed rgba(255,255,255,.12);min-height:180px;margin-bottom:10px}
+.mini-reset-btn{
+  position:absolute;
+  top:10px;
+  left:10px;
+  width:auto;
+  padding:6px 10px;
+  font-size:12px;
+  border-radius:12px;
+  background:#1a1f2b;
+  color:#fff;
+  border:1px solid rgba(255,255,255,.12);
+  cursor:pointer;
+}
+.preview-holder{position:relative;}
+
     .logo-preview{max-width:100%;max-height:160px;object-fit:contain}
     .hours-grid-wrap{display:grid;gap:10px}
     .hour-row{display:grid;gap:14px;padding:16px;border-radius:22px;background:linear-gradient(180deg,#101725 0%,#0b111a 100%);border:1px solid rgba(255,255,255,.06);box-shadow:inset 0 1px 0 rgba(255,255,255,.03);transition:border-color .2s ease, box-shadow .2s ease}
@@ -589,8 +612,25 @@
     .hour-row:hover{border-color:rgba(215,180,109,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.03),0 10px 24px rgba(0,0,0,.12)}
     .hour-row.is-closed input[type="time"]{pointer-events:none}
     .service-builder{display:grid;gap:8px}
-    .service-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+    .service-row{display:grid;grid-template-columns:minmax(0,1fr) 54px 30px auto;gap:6px;align-items:center}
+    .service-row input[data-role="servicePrice"]{text-align:center;padding-inline:3px;max-width:54px;min-width:0}
+    .service-price-label{color:#f7e7c3;font-weight:800;font-size:13px;white-space:nowrap;text-align:center}
     .service-row button{margin:0;border:none;border-radius:14px;padding:12px 10px;cursor:pointer;background:#2b1212;color:#ffb0b0;border:1px solid rgba(255,123,123,.22)}
+.service-price-input{
+  max-width:54px;
+  text-align:center;
+}
+.service-clear-mini{
+  width:auto;
+  min-width:70px;
+  padding:8px 10px;
+  border-radius:12px;
+  font-size:12px;
+}
+
+    .clear-media-btn{margin-top:8px;width:auto;min-width:0;display:inline-flex;align-items:center;justify-content:center;border:none;border-radius:999px;padding:7px 12px;cursor:pointer;background:rgba(255,255,255,.04);color:#f0ddb2;border:1px solid rgba(215,180,109,.18);font-weight:800;font-size:12px;line-height:1}
+    .clear-media-btn:hover{background:rgba(215,180,109,.08)}
+    .empty-preview-text{font-size:13px;color:var(--muted);text-align:center;line-height:1.6}
 
     #settingsPanel .settings-field label{display:none}
     #settingsPanel .settings-field input::placeholder,
@@ -617,7 +657,7 @@
       .settings-two-col{grid-template-columns:1fr;}
     }
 
-    @media (max-width:640px){.slots-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}.time-chip{min-height:40px;font-size:13px;border-radius:13px;}.hour-times,.settings-actions,.service-row{grid-template-columns:1fr;}.hour-row{padding:14px;gap:12px;}.hour-row-top{justify-items:center;}.closed-toggle{justify-content:center;width:100%;max-width:180px;}}
+    @media (max-width:640px){.slots-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;}.time-chip{min-height:40px;font-size:13px;border-radius:13px;}.hour-times,.settings-actions{grid-template-columns:1fr;}.service-row{grid-template-columns:minmax(0,1fr) 46px 28px 48px;gap:5px;}.service-row input{padding:12px 9px;font-size:13px}.service-row input[data-role="servicePrice"]{padding-inline:3px;max-width:46px}.service-price-label{font-size:12px}.service-row button{padding:11px 8px;font-size:12px}.hour-row{padding:14px;gap:12px;}.hour-row-top{justify-items:center;}.closed-toggle{justify-content:center;width:100%;max-width:180px;}}
     @media (max-width:420px){.slots-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;}.time-chip{min-height:38px;padding:7px 5px;font-size:20px;border-radius:12px;}.day-chip{min-width:84px;padding:11px 8px}.success-btn{width:100%}.owner-shell-head{gap:8px}.owner-shell-title h2{font-size:16px}.owner-shell-title p{font-size:12px}.owner-back-btn{padding:10px 12px!important;font-size:12px!important}.owner-tab{padding:12px 8px;font-size:13px}}
   
 .premium-donut-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:18px}
@@ -816,19 +856,19 @@
                   <div class="section-title"><h2>לוגו ותמונת רקע</h2><span class="section-sub">אפשר להעלות מהטלפון</span></div>
                   <div class="settings-upload-row">
                     <div>
-                      <div class="logo-preview-wrap">
+                      <div class="preview-holder"><div class="logo-preview-wrap">
                         <img id="settingsLogoPreview" class="logo-preview" src="logo.png" alt="תצוגת לוגו">
-                      </div>
+                      </div></div>
                       <div class="upload-box">
                         <label class="upload-trigger" for="settingsLogoInput">העלאת לוגו ⤴</label>
                         <input id="settingsLogoInput" type="file" accept="image/png,image/jpeg,image/webp,image/*">
-                        <div class="upload-meta">PNG, JPG, WEBP<br>מומלץ: 700×700 • עובר התאמה אוטומטית</div>
+                        <div class="upload-meta">PNG, JPG, WEBP<br>מומלץ: 900×900 • מוצג גדול יותר ומתאים את עצמו אוטומטית</div>
                       </div>
                     </div>
                     <div>
-                      <div class="settings-preview-box cover">
+                      <div class="preview-holder"><div class="settings-preview-box cover">
                         <img id="settingsHeroPreview" src="background-behind-logo.png" alt="תמונת רקע">
-                      </div>
+                      </div></div>
                       <div class="upload-box">
                         <label class="upload-trigger" for="settingsHeroInput">העלאת תמונת רקע ⤴</label>
                         <input id="settingsHeroInput" type="file" accept="image/png,image/jpeg,image/webp,image/*">
@@ -882,6 +922,7 @@
               <label for="customerSearchInput" class="customers-search-label">חיפוש לקוח</label>
               <input id="customerSearchInput" class="customers-search-input" placeholder="התחל לרשום שם או פלאפון..." autocomplete="off" />
             </div>
+            <div id="customersTotal" class="customers-total">סה״כ לקוחות: <strong>0</strong></div>
             <div class="table-wrap">
               <table class="customers-table">
                 <thead>
@@ -1125,13 +1166,34 @@
       return merged;
     }
 
+    function splitServiceText(text){
+      const raw = String(text || '').trim();
+      if(!raw) return { text:'', price:'' };
+      const priceMatch = raw.match(/(?:₪|ש"?ח)?\s*(\d+(?:[.,]\d+)?)\s*(?:₪|ש"?ח)?\s*$/);
+      if(!priceMatch) return { text: raw, price:'' };
+      let serviceText = raw.slice(0, priceMatch.index).replace(/[\s\-–—:|]+$/,'').trim();
+      return { text: serviceText || raw, price: priceMatch[1].replace(',', '.') };
+    }
+
+    function buildServiceLabel(text, price){
+      const cleanText = String(text || '').trim();
+      const cleanPrice = String(price || '').replace(/[^\d.]/g,'').trim();
+      if(cleanText && cleanPrice) return `${cleanText} - ₪${cleanPrice}`;
+      return cleanText;
+    }
+
     function normalizeServices(services){
       if(Array.isArray(services) && services.length){
         const cleaned = services.map(service => {
-          const value = String(service?.value || '').trim();
-          const label = String(service?.label || '').trim();
-          return { value, label: label || value };
-        }).filter(service => service.value && service.label);
+          const existingText = String(service?.text || '').trim();
+          const existingPrice = String(service?.price || '').replace(/[^\d.]/g,'').trim();
+          const fallback = String(service?.value || service?.label || '').trim();
+          const split = existingText ? { text: existingText, price: existingPrice } : splitServiceText(fallback);
+          const text = split.text;
+          const price = existingPrice || split.price;
+          const label = buildServiceLabel(text, price);
+          return { text, price, label, value: label };
+        }).filter(service => service.text);
         if(cleaned.length) return cleaned;
       }
       return BUSINESS_TEMPLATE.services.map(service => ({ ...service }));
@@ -1171,9 +1233,14 @@
       const pageTitleParts = [businessName, businessSubtitle].filter(Boolean);
 
       document.title = pageTitleParts.length ? pageTitleParts.join(' - ') : 'קביעת תור';
-      businessLogoEl.src = settings.logoSrc;
-      businessLogoEl.alt = businessName ? `לוגו ${businessName}` : 'לוגו העסק';
-      document.getElementById('loaderLogo').src = settings.logoSrc;
+      const hasLogo = Boolean(String(settings.logoSrc || '').trim());
+      if(hasLogo){
+        businessLogoEl.src = settings.logoSrc;
+        businessLogoEl.alt = businessName ? `לוגו ${businessName}` : 'לוגו העסק';
+        document.getElementById('loaderLogo').src = settings.logoSrc;
+      }
+      businessLogoEl.classList.toggle('business-logo-hidden', !hasLogo);
+      document.getElementById('loader').classList.toggle('no-logo', !hasLogo);
 
       heroBusinessNameEl.textContent = businessName;
       heroBusinessNameEl.innerText = businessName;
@@ -1189,7 +1256,14 @@
       if(heroBrand) heroBrand.classList.toggle('logo-only', !hasHeroText);
       if(heroBrandDivider) heroBrandDivider.style.display = hasHeroText ? '' : 'none';
 
-      document.getElementById('logoWrap').style.setProperty('--hero-bg', `url("${settings.heroBg}") center/cover no-repeat`);
+      const logoWrap = document.getElementById('logoWrap');
+      const hasHeroBg = Boolean(String(settings.heroBg || '').trim());
+      logoWrap.classList.toggle('no-hero-bg', !hasHeroBg);
+      if(hasHeroBg){
+        logoWrap.style.setProperty('--hero-bg', `url("${settings.heroBg}") center/cover no-repeat`);
+      } else {
+        logoWrap.style.removeProperty('--hero-bg');
+      }
       document.getElementById('bookingTitle').textContent = settings.bookingTitle;
       document.getElementById('successTitle').textContent = businessName ? `התור נקבע ב${businessName}` : 'התור נקבע';
       document.getElementById('bgMusic').src = settings.sounds.music;
@@ -1198,8 +1272,28 @@
 
       const settingsLogoPreview = document.getElementById('settingsLogoPreview');
       const settingsHeroPreview = document.getElementById('settingsHeroPreview');
-      if(settingsLogoPreview) settingsLogoPreview.src = settings.logoSrc;
-      if(settingsHeroPreview) settingsHeroPreview.src = settings.heroBg;
+      if(settingsLogoPreview){
+        if(settings.logoSrc){
+          settingsLogoPreview.src = settings.logoSrc;
+          settingsLogoPreview.style.display = '';
+          settingsLogoPreview.parentElement.querySelector('.empty-preview-text')?.remove();
+        } else {
+          settingsLogoPreview.removeAttribute('src');
+          settingsLogoPreview.style.display = 'none';
+          if(!settingsLogoPreview.parentElement.querySelector('.empty-preview-text')) settingsLogoPreview.parentElement.insertAdjacentHTML('beforeend','<div class="empty-preview-text">תצוגה ריקה</div>');
+        }
+      }
+      if(settingsHeroPreview){
+        if(settings.heroBg){
+          settingsHeroPreview.src = settings.heroBg;
+          settingsHeroPreview.style.display = '';
+          settingsHeroPreview.parentElement.querySelector('.empty-preview-text')?.remove();
+        } else {
+          settingsHeroPreview.removeAttribute('src');
+          settingsHeroPreview.style.display = 'none';
+          if(!settingsHeroPreview.parentElement.querySelector('.empty-preview-text')) settingsHeroPreview.parentElement.insertAdjacentHTML('beforeend','<div class="empty-preview-text">תצוגה ריקה</div>');
+        }
+      }
 
       const serviceSelect = document.getElementById('clientService');
       serviceSelect.innerHTML = `<option value="">בחר שירות</option>` + settings.services.map(service => `
@@ -1221,22 +1315,27 @@
         return;
       }
       currentBusinessSettings.services.forEach((service, index) => {
+        const normalized = normalizeServices([service])[0] || { text:'', price:'', label:'', value:'' };
+        currentBusinessSettings.services[index] = normalized;
         const row = document.createElement('div');
         row.className = 'service-row';
         row.innerHTML = `
-          <input type="text" value="${escapeHtml(service.value || service.label)}" placeholder="למשל: תספורת מבוגר - ₪60" data-role="service">
+          <input type="text" value="${escapeHtml(normalized.text || '')}" placeholder="טקסט השירות" data-role="serviceText">
+          <input type="number" min="0" step="1" value="${escapeHtml(normalized.price || '')}" placeholder="מחיר" data-role="servicePrice">
+          <span class="service-price-label">ש״ח</span>
           <button type="button" data-role="delete">מחק</button>
         `;
-        const serviceInput = row.querySelector('[data-role="service"]');
+        const serviceTextInput = row.querySelector('[data-role="serviceText"]');
+        const servicePriceInput = row.querySelector('[data-role="servicePrice"]');
         const deleteBtn = row.querySelector('[data-role="delete"]');
         const syncService = () => {
-          const value = serviceInput.value.trim();
-          currentBusinessSettings.services[index] = {
-            label: value,
-            value
-          };
+          const text = serviceTextInput.value.trim();
+          const price = servicePriceInput.value.replace(/[^\d.]/g, '').trim();
+          const label = buildServiceLabel(text, price);
+          currentBusinessSettings.services[index] = { text, price, label, value: label };
         };
-        serviceInput.addEventListener('input', syncService);
+        serviceTextInput.addEventListener('input', syncService);
+        servicePriceInput.addEventListener('input', syncService);
         deleteBtn.addEventListener('click', () => {
           currentBusinessSettings.services.splice(index, 1);
           renderServiceBuilder();
@@ -1729,6 +1828,10 @@
       const empty = document.getElementById('ownerCustomersEmpty');
       const searchInput = document.getElementById('customerSearchInput');
       const customers = getUniqueCustomers();
+      const customersTotal = document.getElementById('customersTotal');
+      if(customersTotal){
+        customersTotal.innerHTML = `סה״כ לקוחות: <strong>${customers.length}</strong>`;
+      }
       const rawQuery = (searchInput?.value || '').trim();
       const nameQuery = rawQuery;
       const phoneQuery = rawQuery.replace(/\D/g, '');
@@ -2044,6 +2147,8 @@
 
     function saveBusinessSettings(){
       currentBusinessSettings.services = normalizeServices(currentBusinessSettings.services.map(service => ({
+        text: String(service.text || '').trim(),
+        price: String(service.price || '').trim(),
         label: String(service.label || '').trim(),
         value: String(service.value || '').trim()
       })));
