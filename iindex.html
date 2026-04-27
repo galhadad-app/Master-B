@@ -746,6 +746,39 @@
     }
 
 
+
+/* Returning customer recognition */
+.returning-customer-box{
+  display:none;
+  gap:8px;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 14px;
+  margin:0 0 12px;
+  border-radius:18px;
+  background:rgba(126,224,163,.08);
+  border:1px solid rgba(126,224,163,.18);
+  color:#d8f7e4;
+}
+.returning-customer-box.show{display:flex}
+.returning-customer-box strong{color:#f7e7c3;font-size:14px}
+.returning-customer-box span{font-size:12px;color:rgba(216,247,228,.78);line-height:1.5}
+.returning-customer-change{
+  flex:0 0 auto;
+  border:none;
+  border-radius:999px;
+  padding:8px 10px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.12);
+  color:#f4f1ea;
+  font-weight:800;
+  font-size:12px;
+  cursor:pointer;
+}
+@media(max-width:480px){
+  .returning-customer-box{align-items:flex-start}
+}
+
 /* Toast visibility fix */
 .toast{
   z-index:99999 !important;
@@ -1428,7 +1461,7 @@ body:has(.modal-backdrop.show) .toast{
 
       renderServiceBuilder();
       renderHoursGrid();
-      updateBookButtonState();
+      applyReturningCustomer();
       bindContactButtons();
     }
 
@@ -1989,8 +2022,14 @@ body:has(.modal-backdrop.show) .toast{
 
           if(lockDoc.exists){
             const lockData = lockDoc.data() || {};
-            if(lockData.waitlistId !== entry.id) throw new Error('TAKEN_BY_OTHER');
-            return;
+            if(lockData.waitlistId === entry.id){
+              return;
+            }
+            // אם נשארה נעילה ישנה על השעה אבל אין תור פעיל בפועל,
+            // לא חוסמים את הלקוח מרשימת ההמתנה.
+            // זה קורה כשבעל העסק ביטל תור והשעה חזרה להיות פנויה,
+            // אבל מסמך הנעילה הישן נשאר ב-Firebase.
+            tx.delete(lockRef);
           }
 
           if(String(freshEntry.status || 'ממתין') !== 'ממתין') throw new Error('INVALID_WAITLIST');
@@ -2734,13 +2773,25 @@ body:has(.modal-backdrop.show) .toast{
     async function cancelAppointmentByOwner(){ if(!activeDetailsItem) return; const removed = await removeAppointment(activeDetailsItem); closeDetailsModal(); if(removed) showToast('התור בוטל והשעה חזרה להיות זמינה.'); }
 
     function openMyAppointmentModal(){
-      document.getElementById('myAppointmentModal').classList.add('show');
-      document.getElementById('myAppointmentPhoneInput').value = '';
-      document.getElementById('myAppointmentLookupSection').classList.remove('hidden');
-      document.getElementById('myAppointmentResult').classList.add('hidden');
-      document.getElementById('myAppointmentHelperText').textContent = 'אפשר לבטל רק תור עתידי.';
+      const savedCustomer = getSavedReturningCustomer();
+      const modal = document.getElementById("myAppointmentModal");
+      const phoneInput = document.getElementById("myAppointmentPhoneInput");
+      const lookupSection = document.getElementById("myAppointmentLookupSection");
+      const resultBox = document.getElementById("myAppointmentResult");
+      const helper = document.getElementById("myAppointmentHelperText");
+
+      modal.classList.add("show");
+      phoneInput.value = savedCustomer ? savedCustomer.phone : "";
+      lookupSection.classList.remove("hidden");
+      resultBox.classList.add("hidden");
+      helper.textContent = "אפשר לבטל רק תור עתידי.";
       activeClientAppointment = null;
-      setTimeout(() => document.getElementById('myAppointmentPhoneInput').focus(), 50);
+
+      if(savedCustomer){
+        setTimeout(() => findClientAppointment(savedCustomer.phone, true), 30);
+      }else{
+        setTimeout(() => phoneInput.focus(), 50);
+      }
     }
     function closeMyAppointmentModal(){
       document.getElementById('myAppointmentModal').classList.remove('show');
@@ -2751,33 +2802,38 @@ body:has(.modal-backdrop.show) .toast{
       document.getElementById('myAppointmentHelperText').textContent = 'אפשר לבטל רק תור עתידי.';
     }
 
-    function findClientAppointment(){
-      const phone = normalizePhone(document.getElementById('myAppointmentPhoneInput').value);
-      const resultBox = document.getElementById('myAppointmentResult');
-      const helper = document.getElementById('myAppointmentHelperText');
+    function findClientAppointment(phoneOverride = "", autoLookup = false){
+      const phoneInput = document.getElementById("myAppointmentPhoneInput");
+      const lookupSection = document.getElementById("myAppointmentLookupSection");
+      const phone = normalizePhone(phoneOverride || phoneInput.value);
+      const resultBox = document.getElementById("myAppointmentResult");
+      const helper = document.getElementById("myAppointmentHelperText");
+
+      if(phoneOverride) phoneInput.value = phone;
+
       if(!/^05\d{8}$/.test(phone)){
-        helper.textContent = 'יש להזין מספר פלאפון מלא שמתחיל ב-05.';
-        document.getElementById('myAppointmentLookupSection').classList.remove('hidden');
-        resultBox.classList.add('hidden');
+        helper.textContent = "יש להזין מספר פלאפון מלא שמתחיל ב-05.";
+        lookupSection.classList.remove("hidden");
+        resultBox.classList.add("hidden");
         activeClientAppointment = null;
         return;
       }
       const found = appointments.filter(item => normalizePhone(item.phone) === phone && isFutureOrTodayAppointment(item) && isActiveAppointment(item) && !isClosedDateKey(item.date)).sort((a,b) => appointmentDateTime(a) - appointmentDateTime(b))[0];
       if(!found){
-        helper.textContent = 'לא נמצא תור עתידי למספר הזה.';
-        document.getElementById('myAppointmentLookupSection').classList.remove('hidden');
-        resultBox.classList.add('hidden');
+        helper.textContent = autoLookup ? "לא נמצא תור עתידי שמור עבורך." : "לא נמצא תור עתידי למספר הזה.";
+        lookupSection.classList.toggle("hidden", !!autoLookup);
+        resultBox.classList.add("hidden");
         activeClientAppointment = null;
         return;
       }
       activeClientAppointment = found;
-      document.getElementById('myApptName').textContent = found.name || '-';
-      document.getElementById('myApptDate').textContent = found.date === formatDateKey(today) ? 'היום' : formatDatePrettyFromKey(found.date);
-      document.getElementById('myApptTime').textContent = found.time || '-';
-      document.getElementById('myApptService').textContent = found.service || '-';
-      document.getElementById('myAppointmentLookupSection').classList.add('hidden');
-      resultBox.classList.remove('hidden');
-      helper.textContent = 'זהו התור העתידי הקרוב שלך.';
+      document.getElementById("myApptName").textContent = found.name || "-";
+      document.getElementById("myApptDate").textContent = found.date === formatDateKey(today) ? "היום" : formatDatePrettyFromKey(found.date);
+      document.getElementById("myApptTime").textContent = found.time || "-";
+      document.getElementById("myApptService").textContent = found.service || "-";
+      lookupSection.classList.add("hidden");
+      resultBox.classList.remove("hidden");
+      helper.textContent = "זהו התור העתידי הקרוב שלך.";
     }
 
     async function cancelClientAppointment(){ if(!activeClientAppointment) return; const removed = await removeAppointment(activeClientAppointment); if(removed){ showToast('התור בוטל והשעה חזרה להיות זמינה.'); closeMyAppointmentModal(); } }
@@ -2802,6 +2858,9 @@ body:has(.modal-backdrop.show) .toast{
 
     function closeImportantNoticeModal(){
       document.getElementById('importantNoticeModal').classList.remove('show');
+      setTimeout(() => {
+        if(typeof window.showReturningWelcomeModal === 'function') window.showReturningWelcomeModal();
+      }, 180);
     }
 
 
@@ -2873,6 +2932,108 @@ body:has(.modal-backdrop.show) .toast{
       ) || null;
     }
 
+    const RETURNING_CUSTOMER_STORAGE_PREFIX = 'returning-customer-details';
+
+    function getReturningCustomerStorageKey(){
+      const businessId = (currentBusinessSettings && currentBusinessSettings.businessId) || BUSINESS_TEMPLATE.businessId || 'default';
+      return `${RETURNING_CUSTOMER_STORAGE_PREFIX}-${businessId}`;
+    }
+
+    function getSavedReturningCustomer(){
+      try{
+        const saved = JSON.parse(localStorage.getItem(getReturningCustomerStorageKey()) || '{}');
+        const firstName = String(saved.firstName || '').trim();
+        const lastName = String(saved.lastName || '').trim();
+        const phone = String(saved.phone || '').replace(/\D/g,'').slice(0,10);
+        if(!firstName || !lastName || !/^05\d{8}$/.test(phone)) return null;
+        return { firstName, lastName, phone };
+      }catch(err){
+        return null;
+      }
+    }
+
+    function saveReturningCustomer(firstName, lastName, phone){
+      const data = {
+        firstName: String(firstName || '').trim(),
+        lastName: String(lastName || '').trim(),
+        phone: String(phone || '').replace(/\D/g,'').slice(0,10)
+      };
+      if(!data.firstName || !data.lastName || !/^05\d{8}$/.test(data.phone)) return;
+      localStorage.setItem(getReturningCustomerStorageKey(), JSON.stringify(data));
+    }
+
+    function ensureReturningCustomerBox(){
+      let box = document.getElementById('returningCustomerBox');
+      if(box) return box;
+      const detailsTitle = document.getElementById('detailsTitle');
+      if(!detailsTitle) return null;
+      const sectionTitle = detailsTitle.closest('.section-title');
+      if(!sectionTitle) return null;
+      box = document.createElement('div');
+      box.id = 'returningCustomerBox';
+      box.className = 'returning-customer-box';
+      box.innerHTML = `
+        <div>
+          <strong id="returningCustomerGreeting">לקוח מזוהה</strong>
+          <span>הפרטים נשמרו במכשיר הזה. נשאר רק לבחור יום, שעה ושירות.</span>
+        </div>
+        <button type="button" class="returning-customer-change" id="changeReturningCustomerBtn">החלף</button>
+      `;
+      sectionTitle.insertAdjacentElement('afterend', box);
+      document.getElementById('changeReturningCustomerBtn').addEventListener('click', clearReturningCustomer);
+      return box;
+    }
+
+    function setCustomerDetailsVisibility(isReturningCustomer){
+      const firstNameInput = document.getElementById('clientFirstName');
+      const lastNameInput = document.getElementById('clientLastName');
+      const phoneInput = document.getElementById('clientPhone');
+      const serviceSelect = document.getElementById('clientService');
+      const firstNameRow = firstNameInput?.closest('.name-row');
+      const phoneField = phoneInput?.closest('div');
+      const serviceRow = serviceSelect?.closest('.name-row');
+
+      if(firstNameRow) firstNameRow.style.display = isReturningCustomer ? 'none' : '';
+      if(phoneField) phoneField.style.display = isReturningCustomer ? 'none' : '';
+      if(serviceRow) serviceRow.style.gridTemplateColumns = isReturningCustomer ? '1fr' : '';
+    }
+
+    function applyReturningCustomer(){
+      const saved = getSavedReturningCustomer();
+      const box = ensureReturningCustomerBox();
+      const firstNameInput = document.getElementById('clientFirstName');
+      const lastNameInput = document.getElementById('clientLastName');
+      const phoneInput = document.getElementById('clientPhone');
+
+      if(saved){
+        if(firstNameInput) firstNameInput.value = saved.firstName;
+        if(lastNameInput) lastNameInput.value = saved.lastName;
+        if(phoneInput) phoneInput.value = saved.phone;
+        const greeting = document.getElementById('returningCustomerGreeting');
+        if(greeting) greeting.textContent = `שלום ${saved.firstName}`;
+        if(box) box.classList.add('show');
+        document.getElementById('detailsTitle').textContent = 'בחירת שירות';
+        setCustomerDetailsVisibility(true);
+      }else{
+        if(box) box.classList.remove('show');
+        document.getElementById('detailsTitle').textContent = 'פרטי לקוח';
+        setCustomerDetailsVisibility(false);
+      }
+      updateBookButtonState();
+    }
+
+    function clearReturningCustomer(){
+      localStorage.removeItem(getReturningCustomerStorageKey());
+      const firstNameInput = document.getElementById('clientFirstName');
+      const lastNameInput = document.getElementById('clientLastName');
+      const phoneInput = document.getElementById('clientPhone');
+      if(firstNameInput) firstNameInput.value = '';
+      if(lastNameInput) lastNameInput.value = '';
+      if(phoneInput) phoneInput.value = '';
+      applyReturningCustomer();
+      setTimeout(() => firstNameInput?.focus(), 60);
+    }
+
     function updateBookButtonState(){
       const service = document.getElementById('clientService').value;
       const bookBtn = document.getElementById('bookBtn');
@@ -2916,10 +3077,9 @@ body:has(.modal-backdrop.show) .toast{
         }catch(waitErr){
           console.error('waitlist cleanup failed:', waitErr);
         }
+        saveReturningCustomer(firstName, lastName, phone);
         openSuccessModal(bookedDatePretty, bookedTime, bookedService);
-        document.getElementById('clientFirstName').value = '';
-        document.getElementById('clientLastName').value = '';
-        document.getElementById('clientPhone').value = '';
+        applyReturningCustomer();
         document.getElementById('clientService').value = '';
         selectedTime = null;
         document.getElementById('selectedTimeText').textContent = 'עדיין לא נבחרה שעה';
@@ -3213,5 +3373,81 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+
+<div class="modal-backdrop" id="returningWelcomeModal">
+  <div class="modal success-modal" style="max-width:340px;">
+    <div class="success-icon">👋</div>
+    <h3 id="returningWelcomeText">שלום</h3>
+    <p class="success-note" style="margin-bottom:18px;">שמח לראות שחזרת!</p>
+    <div class="success-btn-row">
+      <button class="success-btn" id="closeReturningWelcomeBtn">יאללה קובעים תור</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+(function(){
+  function getSavedReturningCustomerForWelcome(){
+    try{
+      const keyPrefix='returning-customer-details';
+      const keys=Object.keys(localStorage).filter(k=>k.startsWith(keyPrefix));
+      for(const key of keys){
+        try{
+          const data=JSON.parse(localStorage.getItem(key)||'{}');
+          const firstName=String(data.firstName||'').trim();
+          if(firstName) return data;
+        }catch(e){}
+      }
+    }catch(err){}
+    return null;
+  }
+
+  window.showReturningWelcomeModal = function(){
+    try{
+      if(sessionStorage.getItem('returningWelcomeShown')) return;
+      const importantModal=document.getElementById('importantNoticeModal');
+      if(importantModal && importantModal.classList.contains('show')) return;
+
+      const saved=getSavedReturningCustomerForWelcome();
+      if(!saved) return;
+
+      const modal=document.getElementById('returningWelcomeModal');
+      const text=document.getElementById('returningWelcomeText');
+      const btn=document.getElementById('closeReturningWelcomeBtn');
+      if(!modal || !text || !btn) return;
+
+      text.textContent=`שלום ${saved.firstName} 👋`;
+      modal.classList.add('show');
+    }catch(err){}
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const modal=document.getElementById('returningWelcomeModal');
+    const btn=document.getElementById('closeReturningWelcomeBtn');
+    if(btn){
+      btn.addEventListener('click', ()=>{
+        modal?.classList.remove('show');
+        sessionStorage.setItem('returningWelcomeShown','1');
+      });
+    }
+    if(modal){
+      modal.addEventListener('click',(e)=>{
+        if(e.target===modal){
+          modal.classList.remove('show');
+          sessionStorage.setItem('returningWelcomeShown','1');
+        }
+      });
+    }
+
+    setTimeout(()=>{
+      const importantModal=document.getElementById('importantNoticeModal');
+      if(!importantModal || !importantModal.classList.contains('show')){
+        window.showReturningWelcomeModal();
+      }
+    }, 1600);
+  });
+})();
+</script>
 </body>
 </html>
