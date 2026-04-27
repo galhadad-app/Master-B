@@ -3378,6 +3378,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 <script>
+<script>
 document.addEventListener('DOMContentLoaded', function(){
   try{
     const keyPrefix='returning-customer-details';
@@ -3394,24 +3395,52 @@ document.addEventListener('DOMContentLoaded', function(){
     const modal=document.getElementById('returningWelcomeModal');
     const text=document.getElementById('returningWelcomeText');
     const btn=document.getElementById('closeReturningWelcomeBtn');
+    const importantModal=document.getElementById('importantNoticeModal');
+    const importantText=document.getElementById('importantNoticeText');
+    const importantCloseBtn=document.getElementById('closeImportantNoticeBtn');
     if(!modal || !text || !btn) return;
 
     text.textContent=`שלום ${saved.firstName} 👋`;
 
-    setTimeout(()=>{
-      modal.classList.add('show');
-    },400);
-
-    btn.addEventListener('click', ()=>{
+    function closeReturningWelcomeModal(){
       modal.classList.remove('show');
       sessionStorage.setItem('returningWelcomeShown','1');
+    }
+
+    function openReturningWelcomeModal(){
+      if(sessionStorage.getItem('returningWelcomeShown')) return;
+      modal.classList.add('show');
+    }
+
+    btn.addEventListener('click', closeReturningWelcomeModal);
+    modal.addEventListener('click',(e)=>{
+      if(e.target===modal) closeReturningWelcomeModal();
     });
 
-    modal.addEventListener('click',(e)=>{
-      if(e.target===modal){
-        modal.classList.remove('show');
-        sessionStorage.setItem('returningWelcomeShown','1');
-      }
+    function showAfterImportantNotice(){
+      setTimeout(openReturningWelcomeModal, 250);
+    }
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const importantIsOpen = importantModal && importantModal.classList.contains('show');
+        const importantHasText = importantText && String(importantText.textContent || '').trim();
+
+        if(importantIsOpen || importantHasText){
+          if(importantCloseBtn){
+            importantCloseBtn.addEventListener('click', showAfterImportantNotice, { once:true });
+          }
+          if(importantModal){
+            importantModal.addEventListener('click', (e)=>{
+              if(e.target===importantModal) showAfterImportantNotice();
+            }, { once:true });
+          }
+          if(!importantIsOpen) showAfterImportantNotice();
+          return;
+        }
+
+        openReturningWelcomeModal();
+      }, 1600);
     });
   }catch(err){}
 });
