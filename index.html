@@ -2852,6 +2852,9 @@ body:has(.modal-backdrop.show) .toast{
 
     function closeImportantNoticeModal(){
       document.getElementById('importantNoticeModal').classList.remove('show');
+      setTimeout(() => {
+        if(typeof window.showReturningWelcomeModal === 'function') window.showReturningWelcomeModal();
+      }, 180);
     }
 
 
@@ -3378,72 +3381,67 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 <script>
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-  try{
-    const keyPrefix='returning-customer-details';
-    const keys=Object.keys(localStorage).filter(k=>k.startsWith(keyPrefix));
-    let saved=null;
-    for(const key of keys){
-      try{
-        const data=JSON.parse(localStorage.getItem(key)||'{}');
-        if(data.firstName){ saved=data; break; }
-      }catch(e){}
-    }
-    if(!saved || sessionStorage.getItem('returningWelcomeShown')) return;
+(function(){
+  function getSavedReturningCustomerForWelcome(){
+    try{
+      const keyPrefix='returning-customer-details';
+      const keys=Object.keys(localStorage).filter(k=>k.startsWith(keyPrefix));
+      for(const key of keys){
+        try{
+          const data=JSON.parse(localStorage.getItem(key)||'{}');
+          const firstName=String(data.firstName||'').trim();
+          if(firstName) return data;
+        }catch(e){}
+      }
+    }catch(err){}
+    return null;
+  }
 
-    const modal=document.getElementById('returningWelcomeModal');
-    const text=document.getElementById('returningWelcomeText');
-    const btn=document.getElementById('closeReturningWelcomeBtn');
-    const importantModal=document.getElementById('importantNoticeModal');
-    const importantText=document.getElementById('importantNoticeText');
-    const importantCloseBtn=document.getElementById('closeImportantNoticeBtn');
-    if(!modal || !text || !btn) return;
-
-    text.textContent=`שלום ${saved.firstName} 👋`;
-
-    function closeReturningWelcomeModal(){
-      modal.classList.remove('show');
-      sessionStorage.setItem('returningWelcomeShown','1');
-    }
-
-    function openReturningWelcomeModal(){
+  window.showReturningWelcomeModal = function(){
+    try{
       if(sessionStorage.getItem('returningWelcomeShown')) return;
+      const importantModal=document.getElementById('importantNoticeModal');
+      if(importantModal && importantModal.classList.contains('show')) return;
+
+      const saved=getSavedReturningCustomerForWelcome();
+      if(!saved) return;
+
+      const modal=document.getElementById('returningWelcomeModal');
+      const text=document.getElementById('returningWelcomeText');
+      const btn=document.getElementById('closeReturningWelcomeBtn');
+      if(!modal || !text || !btn) return;
+
+      text.textContent=`שלום ${saved.firstName} 👋`;
       modal.classList.add('show');
+    }catch(err){}
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const modal=document.getElementById('returningWelcomeModal');
+    const btn=document.getElementById('closeReturningWelcomeBtn');
+    if(btn){
+      btn.addEventListener('click', ()=>{
+        modal?.classList.remove('show');
+        sessionStorage.setItem('returningWelcomeShown','1');
+      });
     }
-
-    btn.addEventListener('click', closeReturningWelcomeModal);
-    modal.addEventListener('click',(e)=>{
-      if(e.target===modal) closeReturningWelcomeModal();
-    });
-
-    function showAfterImportantNotice(){
-      setTimeout(openReturningWelcomeModal, 250);
-    }
-
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        const importantIsOpen = importantModal && importantModal.classList.contains('show');
-        const importantHasText = importantText && String(importantText.textContent || '').trim();
-
-        if(importantIsOpen || importantHasText){
-          if(importantCloseBtn){
-            importantCloseBtn.addEventListener('click', showAfterImportantNotice, { once:true });
-          }
-          if(importantModal){
-            importantModal.addEventListener('click', (e)=>{
-              if(e.target===importantModal) showAfterImportantNotice();
-            }, { once:true });
-          }
-          if(!importantIsOpen) showAfterImportantNotice();
-          return;
+    if(modal){
+      modal.addEventListener('click',(e)=>{
+        if(e.target===modal){
+          modal.classList.remove('show');
+          sessionStorage.setItem('returningWelcomeShown','1');
         }
+      });
+    }
 
-        openReturningWelcomeModal();
-      }, 1600);
-    });
-  }catch(err){}
-});
+    setTimeout(()=>{
+      const importantModal=document.getElementById('importantNoticeModal');
+      if(!importantModal || !importantModal.classList.contains('show')){
+        window.showReturningWelcomeModal();
+      }
+    }, 1600);
+  });
+})();
 </script>
 </body>
 </html>
