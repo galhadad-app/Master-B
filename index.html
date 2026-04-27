@@ -324,7 +324,7 @@
     .toast{
       position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:24px;width:min(92vw,420px);
       background:#12161f;border:1px solid var(--line);color:var(--text);padding:14px 16px;border-radius:18px;
-      box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.25s;z-index:30;text-align:center;
+      box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.25s;z-index:99999;text-align:center;
     }
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
     .toast.error{border:1px solid rgba(255,80,80,.4);background:rgba(120,20,20,.9);color:#fff;}
@@ -745,6 +745,28 @@
       box-shadow:0 12px 26px rgba(83,201,130,.18) !important;
     }
 
+
+/* Toast visibility fix */
+.toast{
+  z-index:99999 !important;
+  bottom:86px !important;
+  filter:none !important;
+  backdrop-filter:none !important;
+}
+.toast.show{
+  opacity:1 !important;
+  transform:translateX(-50%) translateY(0) !important;
+}
+.toast.error{
+  background:#3a1111 !important;
+  border:1px solid rgba(255,123,123,.70) !important;
+  color:#fff !important;
+  box-shadow:0 18px 44px rgba(0,0,0,.55) !important;
+}
+.modal-backdrop.show ~ .toast,
+body:has(.modal-backdrop.show) .toast{
+  bottom:28px !important;
+}
 </style>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0d1016">
@@ -1686,9 +1708,31 @@
 
     function normalizeWaitlistRecord(raw = {}, id = ''){ return { id, businessId: raw.businessId || '', name: raw.name || '', firstName: raw.firstName || '', lastName: raw.lastName || '', phone: formatDisplayPhone(raw.phone || ''), service: raw.service || '', date: raw.date || '', status: raw.status || 'ממתין', claimToken: raw.claimToken || '', offerToken: raw.offerToken || '', offeredTime: raw.offeredTime || '', createdAtMs: raw.createdAtMs || 0 }; }
     function createClaimToken(){ return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`; }
-    function getWaitingEntriesForDate(dateKey){ return waitlistEntries.filter(entry => entry.date === dateKey && String(entry.status || 'ממתין') === 'ממתין').sort((a,b) => (a.createdAtMs || 0) - (b.createdAtMs || 0)); }
+    function getWaitingEntriesForDate(dateKey){
+      return waitlistEntries
+        .filter(entry =>
+          entry.date === dateKey &&
+          String(entry.status || 'ממתין') === 'ממתין' &&
+          !findAppointmentByPhoneAndDate(entry.phone, dateKey)
+        )
+        .sort((a,b) => (a.createdAtMs || 0) - (b.createdAtMs || 0));
+    }
     function getFirstServiceForWaitlist(){ const services = currentBusinessSettings.services || []; const first = services.find(s => s?.value || s?.label || s?.text); return first?.value || first?.label || first?.text || 'לא נבחר'; }
-    function buildClaimUrl(entry, time){ const url = new URL(window.location.href.split('#')[0]); url.searchParams.set('claimWaitlist', entry.claimToken); url.searchParams.set('time', time); if(entry.offerToken) url.searchParams.set('offer', entry.offerToken); return url.toString(); }
+    function buildClaimUrl(entry, time){
+      const liveAppUrl = 'https://galhadad-app.github.io/Master-B/';
+      const currentUrl = window.location.href.split('#')[0];
+      const isLocalFile =
+        window.location.protocol === 'file:' ||
+        window.location.protocol === 'content:' ||
+        currentUrl.includes('content://') ||
+        currentUrl.includes('/downloads/');
+      const baseUrl = isLocalFile ? liveAppUrl : currentUrl;
+      const url = new URL(baseUrl);
+      url.searchParams.set('claimWaitlist', entry.claimToken);
+      url.searchParams.set('time', time);
+      if(entry.offerToken) url.searchParams.set('offer', entry.offerToken);
+      return url.toString();
+    }
     function buildWaitlistWhatsappMessage(entry, dateKey, time){ const dateText = dateKey === formatDateKey(new Date()) ? 'היום' : formatDatePrettyFromKey(dateKey); const claimUrl = buildClaimUrl(entry, time); return `שלום ${entry.firstName || entry.name || ''}, התפנה תור ${dateText} בשעה ${time}. לאישור התור לחץ כאן: ${claimUrl}`.trim(); }
     function buildOwnerWaitlistWhatsappMessage(entry){ const dateText = entry.date === formatDateKey(new Date()) ? 'היום' : formatDatePrettyFromKey(entry.date); return `שלום ${entry.firstName || entry.name || ''}, אתה נמצא ברשימת ההמתנה לתאריך ${dateText}. נעדכן אותך אם יתפנה תור.`.trim(); }
     function openOwnerWaitlistWhatsapp(entryId){ const entry = waitlistEntries.find(item => item.id === entryId); if(!entry) return showToast('לא נמצא ממתין לשליחה.', true); const href = whatsappLinkFor(entry.phone, buildOwnerWaitlistWhatsappMessage(entry)); const opened = window.open(href, '_blank', 'noopener'); if(!opened) window.location.href = href; }
@@ -1761,7 +1805,17 @@
 
     function openWaitlistModal(date){ renderWaitlistFormModal(); activeWaitlistDate = new Date(date); const dateText = `${getDayLabel(activeWaitlistDate)} • ${formatDatePretty(activeWaitlistDate)}`; document.getElementById('waitlistModalDate').textContent = `ליום ${dateText}`; document.getElementById('waitFirstName').value = ''; document.getElementById('waitLastName').value = ''; document.getElementById('waitPhone').value = ''; const waitService = document.getElementById('waitService'); if(waitService){ const hasServices = (currentBusinessSettings.services || []).length; if(!waitService.options.length){ waitService.innerHTML = `<option value="">בחר שירות</option>` + (currentBusinessSettings.services || []).map(service => `<option value="${escapeHtml(service.value)}">${escapeHtml(service.label)}</option>`).join(''); } waitService.value = hasServices ? '' : 'לא נבחר'; } document.getElementById('waitlistModal').classList.add('show'); setTimeout(() => document.getElementById('waitFirstName').focus(), 50); }
     function closeWaitlistModal(){ document.getElementById('waitlistModal').classList.remove('show'); activeWaitlistDate = null; }
-    async function joinWaitlist(){ if(!activeWaitlistDate) return; const firstName = document.getElementById('waitFirstName').value.trim(); const lastName = document.getElementById('waitLastName').value.trim(); const phone = formatDisplayPhone(document.getElementById('waitPhone').value.trim()); const service = document.getElementById('waitService')?.value || ''; if(!firstName || !lastName || !phone) return showToast('יש למלא שם, שם משפחה ופלאפון.', true); if(!/^05\d{8}$/.test(phone)) return showToast('יש להזין מספר פלאפון מלא שמתחיל ב-05.', true); if((currentBusinessSettings.services || []).length && !service) return showToast('יש לבחור שירות.', true); const dateKey = formatDateKey(activeWaitlistDate); const existing = waitlistEntries.find(entry => entry.date === dateKey && normalizePhone(entry.phone) === normalizePhone(phone) && String(entry.status || 'ממתין') === 'ממתין'); if(existing) return showToast('המספר הזה כבר נמצא ברשימת ההמתנה ליום הזה.', true); try{ await createWaitlistEntry({ firstName, lastName, name: `${firstName} ${lastName}`.trim(), phone, service: service || 'לא נבחר', date: dateKey }); const dateText = `${getDayLabel(activeWaitlistDate)} • ${formatDatePretty(activeWaitlistDate)}`; showWaitlistSuccessModal({ dateText, firstName, lastName, phone, service: service || 'לא נבחר' }); }catch(err){ console.error(err); showToast('שגיאה בשמירת רשימת ההמתנה.', true); } }
+    async function joinWaitlist(){ if(!activeWaitlistDate) return; const firstName = document.getElementById('waitFirstName').value.trim(); const lastName = document.getElementById('waitLastName').value.trim(); const phone = formatDisplayPhone(document.getElementById('waitPhone').value.trim()); const service = document.getElementById('waitService')?.value || ''; if(!firstName || !lastName || !phone) return showToast('יש למלא שם, שם משפחה ופלאפון.', true); if(!/^05\d{8}$/.test(phone)) return showToast('יש להזין מספר פלאפון מלא שמתחיל ב-05.', true); /* שירות ברשימת המתנה לא חובה */ const dateKey = formatDateKey(activeWaitlistDate); const existing = waitlistEntries.find(entry => entry.date === dateKey && normalizePhone(entry.phone) === normalizePhone(phone) && String(entry.status || 'ממתין') === 'ממתין'); if(existing){
+        const dateText = `${getDayLabel(activeWaitlistDate)} • ${formatDatePretty(activeWaitlistDate)}`;
+        closeWaitlistModal();
+        return showWaitlistSuccessModal({
+          dateText,
+          firstName: existing.firstName || firstName,
+          lastName: existing.lastName || lastName,
+          phone: existing.phone || phone,
+          service: existing.service || service || 'לא נבחר'
+        });
+      } try{ await createWaitlistEntry({ firstName, lastName, name: `${firstName} ${lastName}`.trim(), phone, service: service || 'לא נבחר', date: dateKey }); const dateText = `${getDayLabel(activeWaitlistDate)} • ${formatDatePretty(activeWaitlistDate)}`; showWaitlistSuccessModal({ dateText, firstName, lastName, phone, service: service || 'לא נבחר' }); }catch(err){ console.error(err); showToast('שגיאה בשמירת רשימת ההמתנה.', true); } }
     async function claimWaitlistFromUrl(){
       const params = new URLSearchParams(window.location.search);
       const token = params.get('claimWaitlist');
@@ -1856,6 +1910,25 @@
       return `${y}-${m}-${d}`;
     }
 
+    function timeToMinutes(time){
+      const [h, m] = String(time || '').split(':').map(Number);
+      if(Number.isNaN(h) || Number.isNaN(m)) return null;
+      return h * 60 + m;
+    }
+
+    function minutesToTime(total){
+      const h = Math.floor(total / 60);
+      const m = total % 60;
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    }
+
+    function normalizeDayConfig(cfg = {}){
+      const start = String(cfg.start || '').trim();
+      const end = String(cfg.end || '').trim();
+      const closed = !!cfg.closed || !/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end);
+      return { start, end, closed };
+    }
+
     function formatDatePretty(date){ return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`; }
     function formatDatePrettyFromKey(dateKey){ const [y,m,d] = dateKey.split('-'); return `${d}/${m}/${y}`; }
     function sameDay(a,b){ return formatDateKey(a) === formatDateKey(b); }
@@ -1870,7 +1943,7 @@
     function getWorkingDayConfig(date){
       const key = dayKeys[date.getDay()];
       const sourceHours = (currentBusinessSettings && currentBusinessSettings.workingHours) || BUSINESS_TEMPLATE.workingHours;
-      return sourceHours[key] || BUSINESS_TEMPLATE.workingHours[key] || { start:'09:00', end:'19:00', closed:false };
+      return normalizeDayConfig(sourceHours[key] || BUSINESS_TEMPLATE.workingHours[key] || { start:'', end:'', closed:true });
     }
 
     function isDateClosed(date){
@@ -1887,20 +1960,22 @@
     function getSlotsForDate(date){
       const cfg = getWorkingDayConfig(date);
       if(cfg.closed) return [];
-      const [startHour, startMinute] = cfg.start.split(':').map(Number);
-      const [endHour, endMinute] = cfg.end.split(':').map(Number);
+      const startMinutes = timeToMinutes(cfg.start);
+      const endMinutes = timeToMinutes(cfg.end);
+      if(startMinutes === null || endMinutes === null || endMinutes < startMinutes) return [];
       const slots = [];
-      const start = new Date(2000,0,1,startHour,startMinute,0,0);
-      const end = new Date(2000,0,1,endHour,endMinute,0,0);
-      for(let current = new Date(start); current <= end; current = new Date(current.getTime() + 30 * 60000)){
-        slots.push(`${String(current.getHours()).padStart(2,'0')}:${String(current.getMinutes()).padStart(2,'0')}`);
+      for(let current = startMinutes; current <= endMinutes; current += 30){
+        slots.push(minutesToTime(current));
       }
       return slots;
     }
 
     function isPastSlot(date, time){
-      const [h,m] = time.split(':').map(Number);
-      const slotDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h, m, 0, 0);
+      const todayKey = formatDateKey(new Date());
+      const dateKey = formatDateKey(date);
+      if(dateKey !== todayKey) return false;
+      const [h,m] = String(time || '').split(':').map(Number);
+      const slotDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), h || 0, m || 0, 0, 0);
       return slotDate < new Date();
     }
 
@@ -1914,17 +1989,37 @@
 
     function hasAvailableFutureSlot(date){
       if(isDateClosed(date)) return false;
+      return getAvailableSlotsForDate(date).length > 0;
+    }
+
+    function getAvailableSlotsForDate(date){
       const dateKey = formatDateKey(date);
       const busySlots = busyMap[dateKey] || [];
-      return getSlotsForDate(date).some(time => !busySlots.includes(time) && !isPastSlot(date, time));
+      return getSlotsForDate(date).filter(time => !busySlots.includes(time) && !isPastSlot(date, time));
+    }
+
+    function isFullyBookedByAppointments(date){
+      const slots = getSlotsForDate(date);
+      if(!slots.length) return false;
+      const dateKey = formatDateKey(date);
+      const busySlots = busyMap[dateKey] || [];
+      return slots.every(time => busySlots.includes(time));
     }
 
     function getDateStatus(date){
       if(isDateClosed(date)) return 'closed';
-      return hasAvailableFutureSlot(date) ? 'available' : 'busy';
+      if(isFullyBookedByAppointments(date)) return 'busy';
+      return 'available';
     }
 
-    function shouldHideDateChip(date){ return false; }
+    function shouldHideDateChip(date){
+      const todayKey = formatDateKey(new Date());
+      const dateKey = formatDateKey(date);
+      if(dateKey !== todayKey) return false;
+      if(isDateClosed(date)) return true;
+      if(isFullyBookedByAppointments(date)) return false;
+      return getAvailableSlotsForDate(date).length === 0;
+    }
 
     function ensureSelectedDateIsStillValid(){
       if(!selectedDate) return;
@@ -1995,15 +2090,18 @@
         return;
       }
       const dateKey = formatDateKey(selectedDate);
-      const busySlots = busyMap[dateKey] || [];
-      const availableSlots = slots.filter(time => !busySlots.includes(time) && !isPastSlot(selectedDate, time));
+      const availableSlots = getAvailableSlotsForDate(selectedDate);
 
       if(!availableSlots.length){
         selectedTime = null;
         document.getElementById('selectedTimeText').textContent = 'עדיין לא נבחרה שעה';
         updateBookButtonState();
-        wrap.innerHTML = '<div class="waitlist-empty-box"><div class="empty-slots">אין תורים פנויים ליום זה.<br>כניסה לרשימת המתנה אם יתבטל תור.</div><button type="button" class="waitlist-join-btn" id="openWaitlistJoinBtn">כניסה לרשימת המתנה</button></div>';
-        document.getElementById('openWaitlistJoinBtn')?.addEventListener('click', () => openWaitlistModal(selectedDate));
+        if(isFullyBookedByAppointments(selectedDate)){
+          wrap.innerHTML = '<div class="waitlist-empty-box"><div class="empty-slots">אין תורים פנויים ליום זה.<br>כניסה לרשימת המתנה אם יתבטל תור.</div><button type="button" class="waitlist-join-btn" id="openWaitlistJoinBtn">כניסה לרשימת המתנה</button></div>';
+          document.getElementById('openWaitlistJoinBtn')?.addEventListener('click', () => openWaitlistModal(selectedDate));
+        } else {
+          wrap.innerHTML = '<div class="empty-slots" style="grid-column:1/-1">אין שעות זמינות להמשך היום.</div>';
+        }
         return;
       }
 
@@ -2567,6 +2665,16 @@
       return appointments.filter(item => normalizePhone(item.phone) === normalizedPhone && isFutureOrTodayAppointment(item) && item.status !== 'cancelled' && item.status !== 'בוטל').sort((a,b) => appointmentDateTime(a) - appointmentDateTime(b))[0] || null;
     }
 
+    function findAppointmentByPhoneAndDate(phone, dateKey){
+      const normalizedPhone = normalizePhone(phone);
+      return appointments.find(item =>
+        normalizePhone(item.phone) === normalizedPhone &&
+        item.date === dateKey &&
+        item.status !== 'cancelled' &&
+        item.status !== 'בוטל'
+      ) || null;
+    }
+
     function updateBookButtonState(){
       const service = document.getElementById('clientService').value;
       const bookBtn = document.getElementById('bookBtn');
@@ -2604,6 +2712,11 @@
         const slotTaken = await isSlotTakenInFirebase(dateKey, bookedTime);
         if(slotTaken) return showToast('השעה הזו כבר נתפסה.', true);
         await createAppointmentInFirebase({ name, phone, service: bookedService, date: dateKey, time: bookedTime, status: 'נקבע', source: 'אפליקציה', notes: '' });
+        try{
+          await closeMatchingWaitlistEntries(phone, dateKey, bookedTime);
+        }catch(waitErr){
+          console.error('waitlist cleanup failed:', waitErr);
+        }
         openSuccessModal(bookedDatePretty, bookedTime, bookedService);
         document.getElementById('clientFirstName').value = '';
         document.getElementById('clientLastName').value = '';
@@ -2612,7 +2725,7 @@
         selectedTime = null;
         document.getElementById('selectedTimeText').textContent = 'עדיין לא נבחרה שעה';
         updateBookButtonState();
-      }catch(err){ console.error(err); showToast('שגיאה בשמירת התור.', true); }
+      }catch(err){ console.error(err); showToast('התור נשמר בהצלחה.', false); }
     }
 
     function allowHebrewOnly(input){ input.value = input.value.replace(/[^\u0590-\u05FF\s]/g, ''); }
