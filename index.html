@@ -443,7 +443,7 @@
     .today-badge{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(126,224,163,.14);color:#b9f4cd;border:1px solid rgba(126,224,163,.2);font-weight:800;font-size:12px}
     .clickable-row{cursor:pointer;transition:.2s transform,.2s opacity}
     .clickable-row:hover td{background:#202634}
-    .phone-link{color:#7ee0a3;text-decoration:none;font-weight:700}
+    .phone-link{color:#7ee0a3;text-decoration:none;font-weight:700;direction:ltr;unicode-bidi:plaintext;display:inline-block}
     .appointments-table th:nth-child(1), .appointments-table td:nth-child(1){width:24%}
     .appointments-table th:nth-child(2), .appointments-table td:nth-child(2){width:24%}
     .appointments-table th:nth-child(3), .appointments-table td:nth-child(3){width:16%}
@@ -1688,6 +1688,11 @@ body:has(.modal-backdrop.show) .toast{
       return status;
     }
 
+    function isActiveAppointment(item){
+      const status = normalizeStatusLabel(item?.status);
+      return status !== 'בוטל' && status !== 'cancelled' && status !== 'canceled';
+    }
+
     function formatDisplayPhone(phone){
       const digits = String(phone || '').replace(/\D/g, '');
       if(/^9720\d{8}$/.test(digits)) return `0${digits.slice(4)}`;
@@ -1715,7 +1720,7 @@ body:has(.modal-backdrop.show) .toast{
       Object.keys(busyMap).forEach(key => delete busyMap[key]);
       appointments.forEach(item => {
         if(!item?.date || !item?.time) return;
-        if(item.status === 'בוטל' || item.status === 'cancelled') return;
+        if(!isActiveAppointment(item)) return;
         if(isClosedDateKey(item.date)) return;
         busyMap[item.date] = busyMap[item.date] || [];
         if(!busyMap[item.date].includes(item.time)) busyMap[item.date].push(item.time);
@@ -1752,8 +1757,7 @@ body:has(.modal-backdrop.show) .toast{
         .where('time', '==', time)
         .get();
       return snapshot.docs.some(doc => {
-        const status = normalizeStatusLabel(doc.data()?.status);
-        return status !== 'בוטל' && status !== 'cancelled';
+        return isActiveAppointment(doc.data() || {});
       });
     }
 
@@ -1769,6 +1773,7 @@ body:has(.modal-backdrop.show) .toast{
         .sort((a,b) => (a.createdAtMs || 0) - (b.createdAtMs || 0));
     }
     function getFirstServiceForWaitlist(){ const services = currentBusinessSettings.services || []; const first = services.find(s => s?.value || s?.label || s?.text); return first?.value || first?.label || first?.text || 'לא נבחר'; }
+    function isWaitlistClaimRequest(){ const params = new URLSearchParams(window.location.search); return !!(params.get('claimWaitlist') && params.get('time')); }
     function buildClaimUrl(entry, time){
       const liveAppUrl = 'https://galhadad-app.github.io/Master-B/';
       const currentUrl = window.location.href.split('#')[0];
@@ -1791,6 +1796,20 @@ body:has(.modal-backdrop.show) .toast{
     function whatsappLinkFor(phone, text){ const digits = normalizePhone(phone); const international = digits.startsWith('0') ? `972${digits.slice(1)}` : digits; return `https://wa.me/${international}?text=${encodeURIComponent(text)}`; }
     async function createWaitlistEntry(payload){ const claimToken = createClaimToken(); await db.collection(WAITLIST_COLLECTION).add({ ...payload, claimToken, status:'ממתין', businessId: currentBusinessSettings.businessId, businessName: currentBusinessSettings.businessName, createdAtMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function updateWaitlistEntry(id, updates){ if(!id) return; await db.collection(WAITLIST_COLLECTION).doc(id).update({ ...updates, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); }
+    async function closeMatchingWaitlistEntries(phone, dateKey, bookedTime){
+      const normalizedPhone = normalizePhone(phone);
+      const matches = waitlistEntries.filter(entry =>
+        normalizePhone(entry.phone) === normalizedPhone &&
+        entry.date === dateKey &&
+        String(entry.status || 'ממתין') === 'ממתין'
+      );
+      if(!matches.length) return;
+      await Promise.all(matches.map(entry => updateWaitlistEntry(entry.id, {
+        status:'נקבע',
+        offeredTime: bookedTime || entry.offeredTime || '',
+        claimedAtMs: Date.now()
+      })));
+    }
     function subscribeWaitlistRealtime(){ if(waitlistUnsubscribe) waitlistUnsubscribe(); waitlistUnsubscribe = db.collection(WAITLIST_COLLECTION).where('businessId', '==', currentBusinessSettings.businessId).onSnapshot(snapshot => { waitlistEntries.length = 0; snapshot.forEach(doc => waitlistEntries.push(normalizeWaitlistRecord(doc.data(), doc.id))); renderOwnerWaitlist(); renderDays(); renderSlots(); }, err => { console.error(err); showToast('שגיאה בטעינת רשימת ההמתנה.', true); }); }
     async function notifyWaitlistForSlot(dateKey, time){ const waiting = getWaitingEntriesForDate(dateKey); if(!waiting.length) return; const offerToken = createClaimToken(); const offered = waiting.map(entry => ({ ...entry, offerToken })); await Promise.all(waiting.map(entry => updateWaitlistEntry(entry.id, { offeredTime: time, offerToken, notifiedAtMs: Date.now() }).catch(console.error))); openNotifyWaitlistModal(offered, dateKey, time); }
     function openNotifyWaitlistModal(entries, dateKey, time){
@@ -1867,64 +1886,185 @@ body:has(.modal-backdrop.show) .toast{
           service: existing.service || service || 'לא נבחר'
         });
       } try{ await createWaitlistEntry({ firstName, lastName, name: `${firstName} ${lastName}`.trim(), phone, service: service || 'לא נבחר', date: dateKey }); const dateText = `${getDayLabel(activeWaitlistDate)} • ${formatDatePretty(activeWaitlistDate)}`; showWaitlistSuccessModal({ dateText, firstName, lastName, phone, service: service || 'לא נבחר' }); }catch(err){ console.error(err); showToast('שגיאה בשמירת רשימת ההמתנה.', true); } }
+    let waitlistClaimInProgress = false;
+
+    function clearWaitlistClaimParams(){
+      try{
+        const url = new URL(window.location.href);
+        ['claimWaitlist','time','offer'].forEach(key => url.searchParams.delete(key));
+        const clean = url.pathname + (url.search ? url.search : '') + (url.hash || '');
+        window.history.replaceState({}, document.title, clean);
+      }catch(err){
+        console.warn('Could not clear waitlist claim params', err);
+      }
+    }
+
     async function claimWaitlistFromUrl(){
       const params = new URLSearchParams(window.location.search);
       const token = params.get('claimWaitlist');
       const time = params.get('time');
       const offerToken = params.get('offer') || '';
-      if(!token || !time) return;
+      if(!token || !time) return false;
+      if(waitlistClaimInProgress) return true;
+      waitlistClaimInProgress = true;
+
+      const bookBtn = document.getElementById('bookBtn');
+      if(bookBtn){ bookBtn.disabled = true; bookBtn.textContent = 'מאשר תור...'; }
+
       try{
         const waitSnap = await db.collection(WAITLIST_COLLECTION)
           .where('businessId', '==', currentBusinessSettings.businessId)
           .where('claimToken', '==', token)
           .limit(1)
           .get();
-        if(waitSnap.empty){ showToast('הקישור כבר לא תקף.', true); return; }
+
+        if(waitSnap.empty){
+          showToast('הקישור כבר לא תקף.', true);
+          return false;
+        }
+
         const waitDoc = waitSnap.docs[0];
         const entry = normalizeWaitlistRecord(waitDoc.data(), waitDoc.id);
-        if(String(entry.status || 'ממתין') !== 'ממתין'){ showToast('התור כבר נתפס או שהקישור לא פעיל.', true); return; }
-        if(offerToken && entry.offerToken && offerToken !== entry.offerToken){ showToast('הקישור כבר לא עדכני.', true); return; }
         const dateKey = entry.date;
-        const existingFutureAppointment = findFutureAppointmentByPhone(entry.phone);
-        if(existingFutureAppointment){ showToast('כבר קיים תור עתידי למספר הזה.', true); return; }
+        const phone = formatDisplayPhone(entry.phone);
+        const name = entry.name || `${entry.firstName || ''} ${entry.lastName || ''}`.trim() || 'לקוח מרשימת המתנה';
+        const service = entry.service || getFirstServiceForWaitlist();
 
-        const lockId = `${currentBusinessSettings.businessId}_${offerToken || token}_${dateKey}_${time}`.replace(/[^a-zA-Z0-9_-]/g,'_');
+        if(!dateKey || !/^\d{2}:\d{2}$/.test(time)){
+          showToast('קישור לא תקין.', true);
+          return false;
+        }
+
+        if(String(entry.status || 'ממתין') !== 'ממתין'){
+          // אם כבר נוצר תור מאותו קישור, מציגים הצלחה במקום שגיאה.
+          const existingMine = appointments.find(item =>
+            normalizePhone(item.phone) === normalizePhone(phone) &&
+            item.date === dateKey &&
+            item.time === time &&
+            isActiveAppointment(item)
+          );
+          if(existingMine){
+            openSuccessModal(formatDatePrettyFromKey(dateKey), time, existingMine.service || service);
+            clearWaitlistClaimParams();
+            return true;
+          }
+          showToast('התור כבר נתפס או שהקישור לא פעיל.', true);
+          return false;
+        }
+
+        if(offerToken && entry.offerToken && offerToken !== entry.offerToken){
+          showToast('הקישור כבר לא עדכני.', true);
+          return false;
+        }
+
+        // בדיקת השעה שהתפנתה בלבד. לא בודקים כאן "תור עתידי" לפי מספר טלפון,
+        // כי זה חוסם בטעות לקוח מרשימת המתנה מלקבל תור שהתפנה.
+        const slotTakenBeforeTx = await isSlotTakenInFirebase(dateKey, time);
+        if(slotTakenBeforeTx){
+          showToast('מישהו כבר תפס את התור הזה.', true);
+          return false;
+        }
+
+        const waitRef = db.collection(WAITLIST_COLLECTION).doc(entry.id);
+        const lockId = `${currentBusinessSettings.businessId}_${dateKey}_${time}`.replace(/[^a-zA-Z0-9_-]/g,'_');
+        const lockRef = db.collection(WAITLIST_CLAIMS_COLLECTION).doc(lockId);
+        const apptRef = db.collection(APPOINTMENTS_COLLECTION).doc(`waitlist_${entry.id}_${dateKey}_${time}`.replace(/[^a-zA-Z0-9_-]/g,'_'));
+
         await db.runTransaction(async (tx) => {
-          const lockRef = db.collection(WAITLIST_CLAIMS_COLLECTION).doc(lockId);
-          const freshWaitRef = db.collection(WAITLIST_COLLECTION).doc(entry.id);
-          const lockDoc = await tx.get(lockRef);
-          if(lockDoc.exists) throw new Error('TAKEN_BY_OTHER');
-          const freshWaitDoc = await tx.get(freshWaitRef);
+          const [freshWaitDoc, lockDoc, existingApptDoc] = await Promise.all([
+            tx.get(waitRef),
+            tx.get(lockRef),
+            tx.get(apptRef)
+          ]);
+
           if(!freshWaitDoc.exists) throw new Error('INVALID_WAITLIST');
+
           const freshEntry = normalizeWaitlistRecord(freshWaitDoc.data(), freshWaitDoc.id);
+          if(offerToken && freshEntry.offerToken && offerToken !== freshEntry.offerToken) throw new Error('INVALID_WAITLIST');
+
+          // לחיצה חוזרת על אותו קישור אחרי שהוא כבר אישר - לא שגיאה.
+          if(existingApptDoc.exists){
+            return;
+          }
+
+          if(lockDoc.exists){
+            const lockData = lockDoc.data() || {};
+            if(lockData.waitlistId !== entry.id) throw new Error('TAKEN_BY_OTHER');
+            return;
+          }
+
           if(String(freshEntry.status || 'ממתין') !== 'ממתין') throw new Error('INVALID_WAITLIST');
 
-          const apptSnap = await db.collection(APPOINTMENTS_COLLECTION)
-            .where('businessId', '==', currentBusinessSettings.businessId)
-            .where('date', '==', dateKey)
-            .where('time', '==', time)
-            .get();
-          const alreadyTaken = apptSnap.docs.some(doc => {
-            const status = normalizeStatusLabel(doc.data()?.status);
-            return status !== 'בוטל' && status !== 'cancelled';
+          tx.set(lockRef, {
+            businessId: currentBusinessSettings.businessId,
+            date: dateKey,
+            time,
+            claimToken: token,
+            offerToken: offerToken || '',
+            waitlistId: entry.id,
+            phone: freshEntry.phone || phone || '',
+            appointmentId: apptRef.id,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
-          if(alreadyTaken) throw new Error('TAKEN_BY_OTHER');
 
-          const apptRef = db.collection(APPOINTMENTS_COLLECTION).doc();
-          tx.set(lockRef, { businessId: currentBusinessSettings.businessId, date: dateKey, time, claimToken: token, waitlistId: entry.id, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-          tx.set(apptRef, { name: entry.name, phone: entry.phone, service: entry.service || getFirstServiceForWaitlist(), date: dateKey, time, status:'נקבע', source:'רשימת המתנה', notes:'', businessId: currentBusinessSettings.businessId, businessName: currentBusinessSettings.businessName, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-          tx.update(freshWaitRef, { status:'נקבע', offeredTime: time, claimedAtMs: Date.now(), updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          tx.set(apptRef, {
+            name: freshEntry.name || name,
+            phone: freshEntry.phone || phone,
+            service: freshEntry.service || service,
+            date: dateKey,
+            time,
+            status:'נקבע',
+            source:'רשימת המתנה',
+            notes:'',
+            waitlistId: entry.id,
+            businessId: currentBusinessSettings.businessId,
+            businessName: currentBusinessSettings.businessName,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+
+          tx.update(waitRef, {
+            status:'נקבע',
+            offeredTime: time,
+            claimedAtMs: Date.now(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
         });
 
-        openSuccessModal(formatDatePrettyFromKey(dateKey), time, 'התור נקבע מרשימת ההמתנה');
-        window.history.replaceState({}, document.title, window.location.pathname);
+        if(phone && !appointments.some(item => normalizePhone(item.phone) === normalizePhone(phone) && item.date === dateKey && item.time === time && isActiveAppointment(item))){
+          appointments.push({
+            id: apptRef.id,
+            businessId: currentBusinessSettings.businessId,
+            name,
+            phone,
+            service,
+            date: dateKey,
+            time,
+            status:'נקבע',
+            source:'רשימת המתנה',
+            notes:''
+          });
+        }
+
+        const waiting = waitlistEntries.find(item => item.id === entry.id);
+        if(waiting) waiting.status = 'נקבע';
+        syncBusyMapFromAppointments();
+        rerenderAll();
+        openSuccessModal(formatDatePrettyFromKey(dateKey), time, service || 'התור נקבע מרשימת ההמתנה');
+        clearWaitlistClaimParams();
+        return true;
       }catch(err){
         console.error(err);
-        if(err && (err.message === 'TAKEN_BY_OTHER' || err.message === 'INVALID_WAITLIST')){
+        if(err && err.message === 'TAKEN_BY_OTHER'){
           showToast('מישהו כבר תפס את התור הזה.', true);
+        } else if(err && err.message === 'INVALID_WAITLIST'){
+          showToast('הקישור כבר לא פעיל.', true);
         } else {
-          showToast('שגיאה באישור התור.', true);
+          showToast('שגיאה באישור התור. נסה לרענן וללחוץ שוב.', true);
         }
+        return false;
+      }finally{
+        waitlistClaimInProgress = false;
+        if(bookBtn){ bookBtn.textContent = 'קבע תור'; updateBookButtonState(); }
       }
     }
 
@@ -2245,7 +2385,7 @@ body:has(.modal-backdrop.show) .toast{
       const empty = document.getElementById('ownerEmpty');
       body.innerHTML = '';
       const todayKey = formatDateKey(today);
-      const upcomingAppointments = appointments.filter(isFutureOrTodayAppointment).filter(item => !isClosedDateKey(item.date)).filter(item => item.status !== 'cancelled' && item.status !== 'בוטל');
+      const upcomingAppointments = appointments.filter(isFutureOrTodayAppointment).filter(item => !isClosedDateKey(item.date)).filter(item => isActiveAppointment(item));
       if(!upcomingAppointments.length){ empty.style.display = 'block'; return; }
       empty.style.display = 'none';
       const sorted = [...upcomingAppointments].sort((a,b) => appointmentDateTime(a) - appointmentDateTime(b));
@@ -2357,7 +2497,7 @@ body:has(.modal-backdrop.show) .toast{
     }
 
     function getActiveAppointments(){
-      return appointments.filter(item => item.status !== 'cancelled' && item.status !== 'בוטל');
+      return appointments.filter(item => isActiveAppointment(item));
     }
 
     function countBy(items, getter){
@@ -2622,7 +2762,7 @@ body:has(.modal-backdrop.show) .toast{
         activeClientAppointment = null;
         return;
       }
-      const found = appointments.filter(item => normalizePhone(item.phone) === phone && isFutureOrTodayAppointment(item) && item.status !== 'cancelled' && item.status !== 'בוטל').sort((a,b) => appointmentDateTime(a) - appointmentDateTime(b))[0];
+      const found = appointments.filter(item => normalizePhone(item.phone) === phone && isFutureOrTodayAppointment(item) && isActiveAppointment(item) && !isClosedDateKey(item.date)).sort((a,b) => appointmentDateTime(a) - appointmentDateTime(b))[0];
       if(!found){
         helper.textContent = 'לא נמצא תור עתידי למספר הזה.';
         document.getElementById('myAppointmentLookupSection').classList.remove('hidden');
@@ -2721,7 +2861,7 @@ body:has(.modal-backdrop.show) .toast{
 
     function findFutureAppointmentByPhone(phone){
       const normalizedPhone = normalizePhone(phone);
-      return appointments.filter(item => normalizePhone(item.phone) === normalizedPhone && isFutureOrTodayAppointment(item) && item.status !== 'cancelled' && item.status !== 'בוטל').sort((a,b) => appointmentDateTime(a) - appointmentDateTime(b))[0] || null;
+      return appointments.filter(item => normalizePhone(item.phone) === normalizedPhone && isFutureOrTodayAppointment(item) && isActiveAppointment(item) && !isClosedDateKey(item.date)).sort((a,b) => appointmentDateTime(a) - appointmentDateTime(b))[0] || null;
     }
 
     function findAppointmentByPhoneAndDate(phone, dateKey){
@@ -2729,8 +2869,7 @@ body:has(.modal-backdrop.show) .toast{
       return appointments.find(item =>
         normalizePhone(item.phone) === normalizedPhone &&
         item.date === dateKey &&
-        item.status !== 'cancelled' &&
-        item.status !== 'בוטל'
+        isActiveAppointment(item)
       ) || null;
     }
 
@@ -2744,6 +2883,7 @@ body:has(.modal-backdrop.show) .toast{
     }
 
     async function bookAppointment(){
+      if(isWaitlistClaimRequest()) return claimWaitlistFromUrl();
       playBookSound();
       const firstName = document.getElementById('clientFirstName').value.trim();
       const lastName = document.getElementById('clientLastName').value.trim();
@@ -2950,7 +3090,7 @@ document.getElementById('bookBtn').addEventListener('click', bookAppointment);
       subscribeAppointmentsRealtime();
       subscribeWaitlistRealtime();
       setTimeout(claimWaitlistFromUrl, 900);
-      setTimeout(openImportantNoticeModal, 700);
+      if(!isWaitlistClaimRequest()) setTimeout(openImportantNoticeModal, 700);
     });
 
     const firstOpenDate = (() => {
