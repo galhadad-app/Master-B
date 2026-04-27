@@ -2787,7 +2787,7 @@ body:has(.modal-backdrop.show) .toast{
         setTimeout(() => phoneInput.focus(), 50);
       }
     }
-    function closeMyAppointmentModal(){{
+    function closeMyAppointmentModal(){
       document.getElementById('myAppointmentModal').classList.remove('show');
       activeClientAppointment = null;
       document.getElementById('myAppointmentLookupSection').classList.remove('hidden');
@@ -2805,7 +2805,7 @@ body:has(.modal-backdrop.show) .toast{
 
       if(phoneOverride) phoneInput.value = phone;
 
-      if(!/^05\d{8}.test(phone)){
+      if(!/^05\d{8}$/.test(phone)){
         helper.textContent = "יש להזין מספר פלאפון מלא שמתחיל ב-05.";
         lookupSection.classList.remove("hidden");
         resultBox.classList.add("hidden");
