@@ -2022,8 +2022,14 @@ body:has(.modal-backdrop.show) .toast{
 
           if(lockDoc.exists){
             const lockData = lockDoc.data() || {};
-            if(lockData.waitlistId !== entry.id) throw new Error('TAKEN_BY_OTHER');
-            return;
+            if(lockData.waitlistId === entry.id){
+              return;
+            }
+            // אם נשארה נעילה ישנה על השעה אבל אין תור פעיל בפועל,
+            // לא חוסמים את הלקוח מרשימת ההמתנה.
+            // זה קורה כשבעל העסק ביטל תור והשעה חזרה להיות פנויה,
+            // אבל מסמך הנעילה הישן נשאר ב-Firebase.
+            tx.delete(lockRef);
           }
 
           if(String(freshEntry.status || 'ממתין') !== 'ממתין') throw new Error('INVALID_WAITLIST');
