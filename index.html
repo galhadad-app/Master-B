@@ -2767,15 +2767,27 @@ body:has(.modal-backdrop.show) .toast{
     async function cancelAppointmentByOwner(){ if(!activeDetailsItem) return; const removed = await removeAppointment(activeDetailsItem); closeDetailsModal(); if(removed) showToast('התור בוטל והשעה חזרה להיות זמינה.'); }
 
     function openMyAppointmentModal(){
-      document.getElementById('myAppointmentModal').classList.add('show');
-      document.getElementById('myAppointmentPhoneInput').value = '';
-      document.getElementById('myAppointmentLookupSection').classList.remove('hidden');
-      document.getElementById('myAppointmentResult').classList.add('hidden');
-      document.getElementById('myAppointmentHelperText').textContent = 'אפשר לבטל רק תור עתידי.';
+      const savedCustomer = getSavedReturningCustomer();
+      const modal = document.getElementById("myAppointmentModal");
+      const phoneInput = document.getElementById("myAppointmentPhoneInput");
+      const lookupSection = document.getElementById("myAppointmentLookupSection");
+      const resultBox = document.getElementById("myAppointmentResult");
+      const helper = document.getElementById("myAppointmentHelperText");
+
+      modal.classList.add("show");
+      phoneInput.value = savedCustomer ? savedCustomer.phone : "";
+      lookupSection.classList.remove("hidden");
+      resultBox.classList.add("hidden");
+      helper.textContent = "אפשר לבטל רק תור עתידי.";
       activeClientAppointment = null;
-      setTimeout(() => document.getElementById('myAppointmentPhoneInput').focus(), 50);
+
+      if(savedCustomer){
+        setTimeout(() => findClientAppointment(savedCustomer.phone, true), 30);
+      }else{
+        setTimeout(() => phoneInput.focus(), 50);
+      }
     }
-    function closeMyAppointmentModal(){
+    function closeMyAppointmentModal(){{
       document.getElementById('myAppointmentModal').classList.remove('show');
       activeClientAppointment = null;
       document.getElementById('myAppointmentLookupSection').classList.remove('hidden');
@@ -2784,33 +2796,38 @@ body:has(.modal-backdrop.show) .toast{
       document.getElementById('myAppointmentHelperText').textContent = 'אפשר לבטל רק תור עתידי.';
     }
 
-    function findClientAppointment(){
-      const phone = normalizePhone(document.getElementById('myAppointmentPhoneInput').value);
-      const resultBox = document.getElementById('myAppointmentResult');
-      const helper = document.getElementById('myAppointmentHelperText');
-      if(!/^05\d{8}$/.test(phone)){
-        helper.textContent = 'יש להזין מספר פלאפון מלא שמתחיל ב-05.';
-        document.getElementById('myAppointmentLookupSection').classList.remove('hidden');
-        resultBox.classList.add('hidden');
+    function findClientAppointment(phoneOverride = "", autoLookup = false){
+      const phoneInput = document.getElementById("myAppointmentPhoneInput");
+      const lookupSection = document.getElementById("myAppointmentLookupSection");
+      const phone = normalizePhone(phoneOverride || phoneInput.value);
+      const resultBox = document.getElementById("myAppointmentResult");
+      const helper = document.getElementById("myAppointmentHelperText");
+
+      if(phoneOverride) phoneInput.value = phone;
+
+      if(!/^05\d{8}.test(phone)){
+        helper.textContent = "יש להזין מספר פלאפון מלא שמתחיל ב-05.";
+        lookupSection.classList.remove("hidden");
+        resultBox.classList.add("hidden");
         activeClientAppointment = null;
         return;
       }
       const found = appointments.filter(item => normalizePhone(item.phone) === phone && isFutureOrTodayAppointment(item) && isActiveAppointment(item) && !isClosedDateKey(item.date)).sort((a,b) => appointmentDateTime(a) - appointmentDateTime(b))[0];
       if(!found){
-        helper.textContent = 'לא נמצא תור עתידי למספר הזה.';
-        document.getElementById('myAppointmentLookupSection').classList.remove('hidden');
-        resultBox.classList.add('hidden');
+        helper.textContent = autoLookup ? "לא נמצא תור עתידי שמור עבורך." : "לא נמצא תור עתידי למספר הזה.";
+        lookupSection.classList.toggle("hidden", !!autoLookup);
+        resultBox.classList.add("hidden");
         activeClientAppointment = null;
         return;
       }
       activeClientAppointment = found;
-      document.getElementById('myApptName').textContent = found.name || '-';
-      document.getElementById('myApptDate').textContent = found.date === formatDateKey(today) ? 'היום' : formatDatePrettyFromKey(found.date);
-      document.getElementById('myApptTime').textContent = found.time || '-';
-      document.getElementById('myApptService').textContent = found.service || '-';
-      document.getElementById('myAppointmentLookupSection').classList.add('hidden');
-      resultBox.classList.remove('hidden');
-      helper.textContent = 'זהו התור העתידי הקרוב שלך.';
+      document.getElementById("myApptName").textContent = found.name || "-";
+      document.getElementById("myApptDate").textContent = found.date === formatDateKey(today) ? "היום" : formatDatePrettyFromKey(found.date);
+      document.getElementById("myApptTime").textContent = found.time || "-";
+      document.getElementById("myApptService").textContent = found.service || "-";
+      lookupSection.classList.add("hidden");
+      resultBox.classList.remove("hidden");
+      helper.textContent = "זהו התור העתידי הקרוב שלך.";
     }
 
     async function cancelClientAppointment(){ if(!activeClientAppointment) return; const removed = await removeAppointment(activeClientAppointment); if(removed){ showToast('התור בוטל והשעה חזרה להיות זמינה.'); closeMyAppointmentModal(); } }
@@ -3347,5 +3364,57 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+
+<div class="modal-backdrop" id="returningWelcomeModal">
+  <div class="modal success-modal" style="max-width:340px;">
+    <div class="success-icon">👋</div>
+    <h3 id="returningWelcomeText">שלום</h3>
+    <p class="success-note" style="margin-bottom:18px;">שמח לראות שחזרת!</p>
+    <div class="success-btn-row">
+      <button class="success-btn" id="closeReturningWelcomeBtn">יאללה קובעים תור</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  try{
+    const keyPrefix='returning-customer-details';
+    const keys=Object.keys(localStorage).filter(k=>k.startsWith(keyPrefix));
+    let saved=null;
+    for(const key of keys){
+      try{
+        const data=JSON.parse(localStorage.getItem(key)||'{}');
+        if(data.firstName){ saved=data; break; }
+      }catch(e){}
+    }
+    if(!saved || sessionStorage.getItem('returningWelcomeShown')) return;
+
+    const modal=document.getElementById('returningWelcomeModal');
+    const text=document.getElementById('returningWelcomeText');
+    const btn=document.getElementById('closeReturningWelcomeBtn');
+    if(!modal || !text || !btn) return;
+
+    text.textContent=`שלום ${saved.firstName} 👋`;
+
+    setTimeout(()=>{
+      modal.classList.add('show');
+    },400);
+
+    btn.addEventListener('click', ()=>{
+      modal.classList.remove('show');
+      sessionStorage.setItem('returningWelcomeShown','1');
+    });
+
+    modal.addEventListener('click',(e)=>{
+      if(e.target===modal){
+        modal.classList.remove('show');
+        sessionStorage.setItem('returningWelcomeShown','1');
+      }
+    });
+  }catch(err){}
+});
+</script>
 </body>
 </html>
