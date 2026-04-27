@@ -746,6 +746,39 @@
     }
 
 
+
+/* Returning customer recognition */
+.returning-customer-box{
+  display:none;
+  gap:8px;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 14px;
+  margin:0 0 12px;
+  border-radius:18px;
+  background:rgba(126,224,163,.08);
+  border:1px solid rgba(126,224,163,.18);
+  color:#d8f7e4;
+}
+.returning-customer-box.show{display:flex}
+.returning-customer-box strong{color:#f7e7c3;font-size:14px}
+.returning-customer-box span{font-size:12px;color:rgba(216,247,228,.78);line-height:1.5}
+.returning-customer-change{
+  flex:0 0 auto;
+  border:none;
+  border-radius:999px;
+  padding:8px 10px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.12);
+  color:#f4f1ea;
+  font-weight:800;
+  font-size:12px;
+  cursor:pointer;
+}
+@media(max-width:480px){
+  .returning-customer-box{align-items:flex-start}
+}
+
 /* Toast visibility fix */
 .toast{
   z-index:99999 !important;
@@ -1428,7 +1461,7 @@ body:has(.modal-backdrop.show) .toast{
 
       renderServiceBuilder();
       renderHoursGrid();
-      updateBookButtonState();
+      applyReturningCustomer();
       bindContactButtons();
     }
 
@@ -2873,6 +2906,108 @@ body:has(.modal-backdrop.show) .toast{
       ) || null;
     }
 
+    const RETURNING_CUSTOMER_STORAGE_PREFIX = 'returning-customer-details';
+
+    function getReturningCustomerStorageKey(){
+      const businessId = (currentBusinessSettings && currentBusinessSettings.businessId) || BUSINESS_TEMPLATE.businessId || 'default';
+      return `${RETURNING_CUSTOMER_STORAGE_PREFIX}-${businessId}`;
+    }
+
+    function getSavedReturningCustomer(){
+      try{
+        const saved = JSON.parse(localStorage.getItem(getReturningCustomerStorageKey()) || '{}');
+        const firstName = String(saved.firstName || '').trim();
+        const lastName = String(saved.lastName || '').trim();
+        const phone = String(saved.phone || '').replace(/\D/g,'').slice(0,10);
+        if(!firstName || !lastName || !/^05\d{8}$/.test(phone)) return null;
+        return { firstName, lastName, phone };
+      }catch(err){
+        return null;
+      }
+    }
+
+    function saveReturningCustomer(firstName, lastName, phone){
+      const data = {
+        firstName: String(firstName || '').trim(),
+        lastName: String(lastName || '').trim(),
+        phone: String(phone || '').replace(/\D/g,'').slice(0,10)
+      };
+      if(!data.firstName || !data.lastName || !/^05\d{8}$/.test(data.phone)) return;
+      localStorage.setItem(getReturningCustomerStorageKey(), JSON.stringify(data));
+    }
+
+    function ensureReturningCustomerBox(){
+      let box = document.getElementById('returningCustomerBox');
+      if(box) return box;
+      const detailsTitle = document.getElementById('detailsTitle');
+      if(!detailsTitle) return null;
+      const sectionTitle = detailsTitle.closest('.section-title');
+      if(!sectionTitle) return null;
+      box = document.createElement('div');
+      box.id = 'returningCustomerBox';
+      box.className = 'returning-customer-box';
+      box.innerHTML = `
+        <div>
+          <strong id="returningCustomerGreeting">לקוח מזוהה</strong>
+          <span>הפרטים נשמרו במכשיר הזה. נשאר רק לבחור יום, שעה ושירות.</span>
+        </div>
+        <button type="button" class="returning-customer-change" id="changeReturningCustomerBtn">החלף</button>
+      `;
+      sectionTitle.insertAdjacentElement('afterend', box);
+      document.getElementById('changeReturningCustomerBtn').addEventListener('click', clearReturningCustomer);
+      return box;
+    }
+
+    function setCustomerDetailsVisibility(isReturningCustomer){
+      const firstNameInput = document.getElementById('clientFirstName');
+      const lastNameInput = document.getElementById('clientLastName');
+      const phoneInput = document.getElementById('clientPhone');
+      const serviceSelect = document.getElementById('clientService');
+      const firstNameRow = firstNameInput?.closest('.name-row');
+      const phoneField = phoneInput?.closest('div');
+      const serviceRow = serviceSelect?.closest('.name-row');
+
+      if(firstNameRow) firstNameRow.style.display = isReturningCustomer ? 'none' : '';
+      if(phoneField) phoneField.style.display = isReturningCustomer ? 'none' : '';
+      if(serviceRow) serviceRow.style.gridTemplateColumns = isReturningCustomer ? '1fr' : '';
+    }
+
+    function applyReturningCustomer(){
+      const saved = getSavedReturningCustomer();
+      const box = ensureReturningCustomerBox();
+      const firstNameInput = document.getElementById('clientFirstName');
+      const lastNameInput = document.getElementById('clientLastName');
+      const phoneInput = document.getElementById('clientPhone');
+
+      if(saved){
+        if(firstNameInput) firstNameInput.value = saved.firstName;
+        if(lastNameInput) lastNameInput.value = saved.lastName;
+        if(phoneInput) phoneInput.value = saved.phone;
+        const greeting = document.getElementById('returningCustomerGreeting');
+        if(greeting) greeting.textContent = `שלום ${saved.firstName}`;
+        if(box) box.classList.add('show');
+        document.getElementById('detailsTitle').textContent = 'בחירת שירות';
+        setCustomerDetailsVisibility(true);
+      }else{
+        if(box) box.classList.remove('show');
+        document.getElementById('detailsTitle').textContent = 'פרטי לקוח';
+        setCustomerDetailsVisibility(false);
+      }
+      updateBookButtonState();
+    }
+
+    function clearReturningCustomer(){
+      localStorage.removeItem(getReturningCustomerStorageKey());
+      const firstNameInput = document.getElementById('clientFirstName');
+      const lastNameInput = document.getElementById('clientLastName');
+      const phoneInput = document.getElementById('clientPhone');
+      if(firstNameInput) firstNameInput.value = '';
+      if(lastNameInput) lastNameInput.value = '';
+      if(phoneInput) phoneInput.value = '';
+      applyReturningCustomer();
+      setTimeout(() => firstNameInput?.focus(), 60);
+    }
+
     function updateBookButtonState(){
       const service = document.getElementById('clientService').value;
       const bookBtn = document.getElementById('bookBtn');
@@ -2916,10 +3051,9 @@ body:has(.modal-backdrop.show) .toast{
         }catch(waitErr){
           console.error('waitlist cleanup failed:', waitErr);
         }
+        saveReturningCustomer(firstName, lastName, phone);
         openSuccessModal(bookedDatePretty, bookedTime, bookedService);
-        document.getElementById('clientFirstName').value = '';
-        document.getElementById('clientLastName').value = '';
-        document.getElementById('clientPhone').value = '';
+        applyReturningCustomer();
         document.getElementById('clientService').value = '';
         selectedTime = null;
         document.getElementById('selectedTimeText').textContent = 'עדיין לא נבחרה שעה';
