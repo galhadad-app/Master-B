@@ -1844,7 +1844,64 @@ body:has(.modal-backdrop.show) .toast{
       })));
     }
     function subscribeWaitlistRealtime(){ if(waitlistUnsubscribe) waitlistUnsubscribe(); waitlistUnsubscribe = db.collection(WAITLIST_COLLECTION).where('businessId', '==', currentBusinessSettings.businessId).onSnapshot(snapshot => { waitlistEntries.length = 0; snapshot.forEach(doc => waitlistEntries.push(normalizeWaitlistRecord(doc.data(), doc.id))); renderOwnerWaitlist(); renderDays(); renderSlots(); }, err => { console.error(err); showToast('שגיאה בטעינת רשימת ההמתנה.', true); }); }
-    async function notifyWaitlistForSlot(dateKey, time){ const waiting = getWaitingEntriesForDate(dateKey); if(!waiting.length) return; const offerToken = createClaimToken(); const offered = waiting.map(entry => ({ ...entry, offerToken })); await Promise.all(waiting.map(entry => updateWaitlistEntry(entry.id, { offeredTime: time, offerToken, notifiedAtMs: Date.now() }).catch(console.error))); openNotifyWaitlistModal(offered, dateKey, time); }
+    function getWaitlistAutoNotifyApiUrl(){
+      return String(
+        window.WAITLIST_AUTO_NOTIFY_API_URL ||
+        localStorage.getItem('WAITLIST_AUTO_NOTIFY_API_URL') ||
+        localStorage.getItem('whatsappWaitlistApiUrl') ||
+        ''
+      ).trim();
+    }
+
+    async function sendWaitlistAutoWhatsapp(entries, dateKey, time){
+      const apiUrl = getWaitlistAutoNotifyApiUrl();
+      if(!apiUrl || !entries.length) return false;
+      const payload = {
+        businessId: currentBusinessSettings.businessId,
+        businessName: currentBusinessSettings.businessName || '',
+        date: dateKey,
+        time,
+        entries: entries.map(entry => ({
+          id: entry.id,
+          name: entry.name || '',
+          firstName: entry.firstName || '',
+          lastName: entry.lastName || '',
+          phone: formatDisplayPhone(entry.phone || ''),
+          service: entry.service || '',
+          message: buildWaitlistWhatsappMessage(entry, dateKey, time),
+          claimUrl: buildClaimUrl(entry, time)
+        }))
+      };
+      try{
+        const res = await fetch(apiUrl, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify(payload)
+        });
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        return true;
+      }catch(err){
+        console.warn('Automatic waitlist WhatsApp notification failed:', err);
+        return false;
+      }
+    }
+
+    async function notifyWaitlistForSlot(dateKey, time, options = {}){
+      const source = options.source || 'owner';
+      const waiting = getWaitingEntriesForDate(dateKey);
+      if(!waiting.length) return;
+      const offerToken = createClaimToken();
+      const offered = waiting.map(entry => ({ ...entry, offerToken }));
+      await Promise.all(waiting.map(entry => updateWaitlistEntry(entry.id, { offeredTime: time, offerToken, notifiedAtMs: Date.now() }).catch(console.error)));
+      const sentAutomatically = await sendWaitlistAutoWhatsapp(offered, dateKey, time);
+      if(sentAutomatically){
+        showToast('נשלחה הודעה אוטומטית לרשימת ההמתנה.');
+        return;
+      }
+      if(source === 'owner'){
+        openNotifyWaitlistModal(offered, dateKey, time);
+      }
+    }
     function openNotifyWaitlistModal(entries, dateKey, time){
       const dateText = dateKey === formatDateKey(new Date()) ? 'היום' : formatDatePrettyFromKey(dateKey);
       const textEl = document.getElementById('notifyWaitlistText');
@@ -1908,7 +1965,7 @@ body:has(.modal-backdrop.show) .toast{
 
     function openWaitlistModal(date){ renderWaitlistFormModal(); activeWaitlistDate = new Date(date); const dateText = `${getDayLabel(activeWaitlistDate)} • ${formatDatePretty(activeWaitlistDate)}`; document.getElementById('waitlistModalDate').textContent = `ליום ${dateText}`; document.getElementById('waitFirstName').value = ''; document.getElementById('waitLastName').value = ''; document.getElementById('waitPhone').value = ''; const waitService = document.getElementById('waitService'); if(waitService){ const hasServices = (currentBusinessSettings.services || []).length; if(!waitService.options.length){ waitService.innerHTML = `<option value="">בחר שירות</option>` + (currentBusinessSettings.services || []).map(service => `<option value="${escapeHtml(service.value)}">${escapeHtml(service.label)}</option>`).join(''); } waitService.value = hasServices ? '' : 'לא נבחר'; } document.getElementById('waitlistModal').classList.add('show'); setTimeout(() => document.getElementById('waitFirstName').focus(), 50); }
     function closeWaitlistModal(){ document.getElementById('waitlistModal').classList.remove('show'); activeWaitlistDate = null; }
-    async function joinWaitlist(){ if(!activeWaitlistDate) return; const firstName = document.getElementById('waitFirstName').value.trim(); const lastName = document.getElementById('waitLastName').value.trim(); const phone = formatDisplayPhone(document.getElementById('waitPhone').value.trim()); const service = document.getElementById('waitService')?.value || ''; if(!firstName || !lastName || !phone) return showToast('יש למלא שם, שם משפחה ופלאפון.', true); if(!/^05\d{8}$/.test(phone)) return showToast('יש להזין מספר פלאפון מלא שמתחיל ב-05.', true); /* שירות ברשימת המתנה לא חובה */ const dateKey = formatDateKey(activeWaitlistDate); const existing = waitlistEntries.find(entry => entry.date === dateKey && normalizePhone(entry.phone) === normalizePhone(phone) && String(entry.status || 'ממתין') === 'ממתין'); if(existing){
+    async function joinWaitlist(){ if(!activeWaitlistDate) return; const firstName = document.getElementById('waitFirstName').value.trim(); const lastName = document.getElementById('waitLastName').value.trim(); const phone = formatDisplayPhone(document.getElementById('waitPhone').value.trim()); const service = document.getElementById('waitService')?.value || ''; if(!firstName || !lastName || !phone) return showToast('יש למלא שם, שם משפחה ופלאפון.', true); if(!/^05\d{8}$/.test(phone)) return showToast('יש להזין מספר פלאפון מלא שמתחיל ב-05.', true); saveReturningCustomer(firstName, lastName, phone); applyReturningCustomer(); /* שירות ברשימת המתנה לא חובה */ const dateKey = formatDateKey(activeWaitlistDate); const existing = waitlistEntries.find(entry => entry.date === dateKey && normalizePhone(entry.phone) === normalizePhone(phone) && String(entry.status || 'ממתין') === 'ממתין'); if(existing){
         const dateText = `${getDayLabel(activeWaitlistDate)} • ${formatDatePretty(activeWaitlistDate)}`;
         closeWaitlistModal();
         return showWaitlistSuccessModal({
@@ -1962,6 +2019,8 @@ body:has(.modal-backdrop.show) .toast{
         const phone = formatDisplayPhone(entry.phone);
         const name = entry.name || `${entry.firstName || ''} ${entry.lastName || ''}`.trim() || 'לקוח מרשימת המתנה';
         const service = entry.service || getFirstServiceForWaitlist();
+        saveReturningCustomerFromKnownData(entry.firstName, entry.lastName, name, phone);
+        applyReturningCustomer();
 
         if(!dateKey || !/^\d{2}:\d{2}$/.test(time)){
           showToast('קישור לא תקין.', true);
@@ -2527,11 +2586,12 @@ body:has(.modal-backdrop.show) .toast{
       closeDetailsModal();
     }
 
-    async function removeAppointment(item){
+    async function removeAppointment(item, options = {}){
       if(!item?.id) return false;
       const freedDate = item.date;
       const freedTime = item.time;
-      try{ await deleteAppointmentFromFirebase(item.id); if(freedDate && freedTime) setTimeout(() => notifyWaitlistForSlot(freedDate, freedTime), 250); return true; }
+      const source = options.source || 'owner';
+      try{ await deleteAppointmentFromFirebase(item.id); if(freedDate && freedTime) setTimeout(() => notifyWaitlistForSlot(freedDate, freedTime, { source }), 250); return true; }
       catch(err){ console.error(err); showToast('שגיאה בביטול התור.', true); return false; }
     }
 
@@ -2770,7 +2830,7 @@ body:has(.modal-backdrop.show) .toast{
       }
     }
 
-    async function cancelAppointmentByOwner(){ if(!activeDetailsItem) return; const removed = await removeAppointment(activeDetailsItem); closeDetailsModal(); if(removed) showToast('התור בוטל והשעה חזרה להיות זמינה.'); }
+    async function cancelAppointmentByOwner(){ if(!activeDetailsItem) return; const removed = await removeAppointment(activeDetailsItem, { source:'owner' }); closeDetailsModal(); if(removed) showToast('התור בוטל והשעה חזרה להיות זמינה.'); }
 
     function openMyAppointmentModal(){
       const savedCustomer = getSavedReturningCustomer();
@@ -2836,7 +2896,7 @@ body:has(.modal-backdrop.show) .toast{
       helper.textContent = "זהו התור העתידי הקרוב שלך.";
     }
 
-    async function cancelClientAppointment(){ if(!activeClientAppointment) return; const removed = await removeAppointment(activeClientAppointment); if(removed){ showToast('התור בוטל והשעה חזרה להיות זמינה.'); closeMyAppointmentModal(); } }
+    async function cancelClientAppointment(){ if(!activeClientAppointment) return; const removed = await removeAppointment(activeClientAppointment, { source:'client' }); if(removed){ showToast('התור בוטל והשעה חזרה להיות זמינה.'); closeMyAppointmentModal(); } }
 
     function openSuccessModal(dateText, timeText, serviceText){
       const safeDate = String(dateText || '').replace(/\//g,'.').slice(0,5);
@@ -2960,6 +3020,18 @@ body:has(.modal-backdrop.show) .toast{
       };
       if(!data.firstName || !data.lastName || !/^05\d{8}$/.test(data.phone)) return;
       localStorage.setItem(getReturningCustomerStorageKey(), JSON.stringify(data));
+    }
+
+    function saveReturningCustomerFromKnownData(firstName, lastName, fullName, phone){
+      let cleanFirst = String(firstName || '').trim();
+      let cleanLast = String(lastName || '').trim();
+      const cleanFullName = String(fullName || '').trim();
+      if((!cleanFirst || !cleanLast) && cleanFullName){
+        const parts = cleanFullName.split(/\s+/).filter(Boolean);
+        if(!cleanFirst) cleanFirst = parts.shift() || '';
+        if(!cleanLast) cleanLast = parts.join(' ') || '';
+      }
+      saveReturningCustomer(cleanFirst, cleanLast, phone);
     }
 
     function ensureReturningCustomerBox(){
