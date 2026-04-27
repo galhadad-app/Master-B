@@ -1309,6 +1309,25 @@ body:has(.modal-backdrop.show) .toast{
       window.__lastBusinessSettings = currentBusinessSettings;
     }
 
+    function getSettingsForCloud(settings = currentBusinessSettings){
+      const safeSettings = { ...settings };
+      delete safeSettings.firebaseConfig;
+      return {
+        ...safeSettings,
+        businessId: BUSINESS_TEMPLATE.businessId,
+        updatedAtMs: Date.now()
+      };
+    }
+
+    function applyCloudBusinessSettings(settings){
+      currentBusinessSettings = mergeBusinessSettings(settings || {});
+      localStorage.setItem(BUSINESS_SETTINGS_STORAGE_KEY, JSON.stringify(currentBusinessSettings));
+      window.__lastBusinessSettings = currentBusinessSettings;
+      syncSettingsTextFields();
+      applyBusinessTemplate();
+      rerenderAll();
+    }
+
     function syncSettingsTextFields(){
       const settings = currentBusinessSettings || BUSINESS_TEMPLATE;
       const settingsBusinessName = document.getElementById('settingsBusinessName');
@@ -1596,6 +1615,7 @@ body:has(.modal-backdrop.show) .toast{
       if(settingsPanel) settingsPanel.classList.add('active');
 
       updateBookButtonState();
+      deleteBusinessSettingsFromCloud();
       closeConfirmResetModal();
       showToast('כל ההגדרות אופסו בהצלחה.');
     }
@@ -1620,6 +1640,37 @@ body:has(.modal-backdrop.show) .toast{
     const APPOINTMENTS_COLLECTION = 'appointments';
     const WAITLIST_COLLECTION = 'waitlist';
     const WAITLIST_CLAIMS_COLLECTION = 'waitlistClaims';
+    const BUSINESS_SETTINGS_COLLECTION = 'businessSettings';
+    const businessSettingsDocRef = db.collection(BUSINESS_SETTINGS_COLLECTION).doc(BUSINESS_TEMPLATE.businessId);
+    let businessSettingsUnsubscribe = null;
+
+    async function saveBusinessSettingsToCloud(settings = currentBusinessSettings){
+      const payload = getSettingsForCloud(settings);
+      await businessSettingsDocRef.set({
+        ...payload,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+
+    function subscribeBusinessSettingsRealtime(){
+      if(businessSettingsUnsubscribe) businessSettingsUnsubscribe();
+      businessSettingsUnsubscribe = businessSettingsDocRef.onSnapshot(snapshot => {
+        if(!snapshot.exists) return;
+        applyCloudBusinessSettings(snapshot.data() || {});
+      }, err => {
+        console.error('Business settings realtime error', err);
+        showToast('לא ניתן לטעון כרגע את מיתוג העסק מהענן.', true);
+      });
+    }
+
+    async function deleteBusinessSettingsFromCloud(){
+      try {
+        await businessSettingsDocRef.delete();
+      } catch(err){
+        console.error('Failed deleting business settings from cloud', err);
+        showToast('האיפוס נשמר במכשיר, אבל לא הצליח להסתנכרן לענן.', true);
+      }
+    }
 
     function normalizeSourceLabel(source){
       const value = String(source || '').trim().toLowerCase();
@@ -2493,19 +2544,21 @@ body:has(.modal-backdrop.show) .toast{
       try {
         const heroSize = getHeroBackgroundTargetSize();
         const dataUrl = key === 'logoSrc'
-          ? await optimizeImageFile(file, { maxWidth: 900, maxHeight: 900, outputType: 'image/webp', quality: 0.92, mode: 'contain' })
-          : await optimizeImageFile(file, { maxWidth: heroSize.width, maxHeight: heroSize.height, outputType: 'image/webp', quality: 0.9, mode: 'cover' });
+          ? await optimizeImageFile(file, { maxWidth: 700, maxHeight: 700, outputType: 'image/webp', quality: 0.86, mode: 'contain' })
+          : await optimizeImageFile(file, { maxWidth: Math.min(heroSize.width, 1100), maxHeight: Math.min(heroSize.height, 520), outputType: 'image/webp', quality: 0.78, mode: 'cover' });
         persistBusinessSettings({ [key]: dataUrl });
         applyBusinessTemplate();
+        await saveBusinessSettingsToCloud(currentBusinessSettings);
         input.value = '';
+        showToast('התמונה נשמרה ותסתנכרן בכל המכשירים.');
       } catch(err){
         console.error(err);
         input.value = '';
-        showToast('שגיאה בטעינת התמונה. נסה קובץ קטן או תמונה אחרת.', true);
+        showToast('התמונה נשמרה במכשיר, אבל לא הצליחה להסתנכרן לענן. נסה תמונה קטנה יותר או בדוק הרשאות Firestore.', true);
       }
     }
 
-    function saveBusinessSettings(){
+    async function saveBusinessSettings(){
       currentBusinessSettings.services = normalizeServices(currentBusinessSettings.services.map(service => ({
         text: String(service.text || '').trim(),
         price: String(service.price || '').trim(),
@@ -2529,7 +2582,13 @@ body:has(.modal-backdrop.show) .toast{
       syncSettingsTextFields();
       applyBusinessTemplate();
       rerenderAll();
-      showToast('הגדרות העסק נשמרו.');
+      try {
+        await saveBusinessSettingsToCloud(currentBusinessSettings);
+        showToast('הגדרות העסק נשמרו והסתנכרנו לכל המכשירים.');
+      } catch(err){
+        console.error('Failed saving settings to cloud', err);
+        showToast('ההגדרות נשמרו במכשיר, אבל לא הצליחו להסתנכרן לענן. בדוק הרשאות Firestore.', true);
+      }
     }
 
     async function cancelAppointmentByOwner(){ if(!activeDetailsItem) return; const removed = await removeAppointment(activeDetailsItem); closeDetailsModal(); if(removed) showToast('התור בוטל והשעה חזרה להיות זמינה.'); }
@@ -2887,10 +2946,11 @@ document.getElementById('bookBtn').addEventListener('click', bookAppointment);
 
     window.addEventListener('load', () => {
       setTimeout(() => document.getElementById('loader').classList.add('hide'), 1300);
+      subscribeBusinessSettingsRealtime();
       subscribeAppointmentsRealtime();
       subscribeWaitlistRealtime();
       setTimeout(claimWaitlistFromUrl, 900);
-    setTimeout(openImportantNoticeModal, 700);
+      setTimeout(openImportantNoticeModal, 700);
     });
 
     const firstOpenDate = (() => {
