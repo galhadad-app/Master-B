@@ -1878,8 +1878,21 @@ body:has(.modal-backdrop.show) .toast{
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify(payload)
         });
-        if(!res.ok) throw new Error(`HTTP ${res.status}`);
-        return true;
+        const data = await res.json().catch(() => ({}));
+        if(!res.ok || data.ok === false) throw new Error(data.error || `HTTP ${res.status}`);
+        const sent = Number(data.sent || 0);
+        const failed = Number(data.failed || 0);
+        const total = Number(data.totalRecipients || 0);
+        if(sent > 0){
+          return true;
+        }
+        console.warn('Automatic waitlist WhatsApp notification returned without sent messages:', data);
+        if(total > 0 && failed > 0){
+          showToast('השרת קיבל את רשימת ההמתנה, אבל וואטסאפ לא שלח בפועל. בדוק Token/Recipient במסוף Meta.', true);
+        }else{
+          showToast('לא נשלחה הודעת וואטסאפ בפועל לרשימת ההמתנה.', true);
+        }
+        return false;
       }catch(err){
         console.warn('Automatic waitlist WhatsApp notification failed:', err);
         return false;
