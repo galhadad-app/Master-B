@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>ניהול עסקים</title>
+
+<style>
+body { font-family: Arial; background:#0b1220; color:#fff; padding:20px }
+.card { background:#111a2b; padding:15px; margin-bottom:10px; border-radius:12px }
+input, select {
+  width:100%;
+  padding:10px;
+  margin:5px 0;
+  border-radius:8px;
+  border:none;
+  background:#0b1220;
+  color:#fff
+}
+button {
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#e1bd70;
+  cursor:pointer
+}
+.link { color:#4cc3ff; word-break:break-all }
+</style>
+
+</head>
+<body>
+
+<h2>ניהול עסקים</h2>
+
+<div class="card">
+<h3>הוספת עסק</h3>
+
+<input id="name" placeholder="שם העסק">
+
+<input id="businessId" placeholder="businessId">
+
+<input id="phone" placeholder="972XXXXXXXXX" maxlength="12">
+
+<select id="plan">
+<option value="basic">בסיסי</option>
+<option value="pro">מתקדם</option>
+<option value="premium">פרימיום</option>
+</select>
+
+<input id="code" placeholder="קוד בעל עסק" maxlength="4">
+
+<button onclick="addBusiness()">שמור עסק</button>
+
+</div>
+
+<div id="list"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+<script>
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCba0XlBoAWJ1eiH6wqer74sSiMyRKfK2s",
+  authDomain: "game1-9d372.firebaseapp.com",
+  projectId: "game1-9d372",
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function cleanPhone(phone){
+  phone = phone.replace(/\D/g,'');
+  return phone.slice(0,12);
+}
+
+function validatePhone(phone){
+  return /^972\d{9}$/.test(phone);
+}
+
+async function addBusiness(){
+
+  let name = document.getElementById('name').value.trim();
+  let id = document.getElementById('businessId').value.trim().toLowerCase();
+  let phone = cleanPhone(document.getElementById('phone').value);
+  let plan = document.getElementById('plan').value;
+  let code = document.getElementById('code').value || "1234";
+
+  if(!name || !id){
+    alert("חסר מידע");
+    return;
+  }
+
+  if(!validatePhone(phone)){
+    alert("מספר חייב להיות 972 + 9 ספרות");
+    return;
+  }
+
+  await db.collection("businesses").doc(id).set({
+    name,
+    businessId:id,
+    phone,
+    plan,
+    ownerCode:code
+  });
+
+  await db.collection("businessSettings").doc(id).set({
+    businessId:id,
+    businessName:name,
+    whatsappNumber:phone,
+    ownerCode:code,
+
+    workingHours:{
+      sunday:{start:"10:00",end:"20:00",closed:false},
+      monday:{start:"10:00",end:"20:00",closed:false},
+      tuesday:{start:"10:00",end:"20:00",closed:false},
+      wednesday:{start:"10:00",end:"20:00",closed:false},
+      thursday:{start:"10:00",end:"20:00",closed:false},
+      friday:{start:"09:00",end:"14:00",closed:false},
+      saturday:{closed:true}
+    },
+
+    services:[
+      {text:"תספורת",price:"60"},
+      {text:"תספורת + זקן",price:"80"}
+    ]
+
+  },{merge:true});
+
+  load();
+}
+
+async function load(){
+
+  const snap = await db.collection("businesses").get();
+  const list = document.getElementById('list');
+  list.innerHTML = "";
+
+  snap.forEach(doc=>{
+    const b = doc.data();
+    const id = doc.id;
+
+    const appLink = location.origin + "/index.html?business=" + id;
+    const waLink = "https://wa.me/" + b.phone + "?text=start_" + id;
+
+    list.innerHTML += `
+    <div class="card">
+      <h3>${b.name}</h3>
+      <p>ID: ${id}</p>
+
+      <div class="link">${appLink}</div>
+      <div class="link">${waLink}</div>
+
+      <button onclick="del('${id}')">מחק</button>
+    </div>
+    `;
+  });
+}
+
+async function del(id){
+  await db.collection("businesses").doc(id).delete();
+  load();
+}
+
+load();
+
+</script>
+
+</body>
+</html>
