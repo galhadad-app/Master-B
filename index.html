@@ -1563,6 +1563,7 @@ body:has(.modal-backdrop.show) .toast{
         const endParts = parseTime(hours.end, fallback.end);
         const row = document.createElement('div');
         row.className = `hour-row ${hours.closed ? 'is-closed' : ''}`;
+        row.dataset.dayKey = key;
         row.innerHTML = `
           <div class="day-name">${weekdayNames[index]}</div>
           <label class="closed-toggle"><input type="checkbox" ${hours.closed ? 'checked' : ''} data-role="closed"><span>${hours.closed ? 'סגור' : 'פתוח'}</span></label>
@@ -2977,6 +2978,37 @@ body:has(.modal-backdrop.show) .toast{
       }
     }
 
+    function collectWorkingHoursFromDom(){
+      const nextHours = mergeWorkingHours(currentBusinessSettings.workingHours || {});
+      const rows = document.querySelectorAll('#hoursGrid .hour-row[data-day-key]');
+
+      const cleanTwoDigits = (value, max) => {
+        let raw = String(value || '').replace(/\D/g, '').slice(0, 2);
+        if(raw === '') return '';
+        const num = Math.min(Number(raw), max);
+        return String(Number.isFinite(num) ? num : 0).padStart(2, '0');
+      };
+
+      rows.forEach(row => {
+        const key = row.dataset.dayKey;
+        if(!key) return;
+        const closedInput = row.querySelector('[data-role="closed"]');
+        const startHour = cleanTwoDigits(row.querySelector('[data-role="startHour"]')?.value, 23);
+        const startMinute = cleanTwoDigits(row.querySelector('[data-role="startMinute"]')?.value, 59);
+        const endHour = cleanTwoDigits(row.querySelector('[data-role="endHour"]')?.value, 23);
+        const endMinute = cleanTwoDigits(row.querySelector('[data-role="endMinute"]')?.value, 59);
+        const isClosed = !!closedInput?.checked;
+
+        nextHours[key] = {
+          start: startHour && startMinute ? `${startHour}:${startMinute}` : '',
+          end: endHour && endMinute ? `${endHour}:${endMinute}` : '',
+          closed: isClosed
+        };
+      });
+
+      return mergeWorkingHours(nextHours);
+    }
+
     async function saveBusinessSettings(){
       currentBusinessSettings.services = normalizeServices(currentBusinessSettings.services.map(service => ({
         text: String(service.text || '').trim(),
@@ -2984,7 +3016,7 @@ body:has(.modal-backdrop.show) .toast{
         label: String(service.label || '').trim(),
         value: String(service.value || '').trim()
       })));
-      currentBusinessSettings.workingHours = mergeWorkingHours(currentBusinessSettings.workingHours || {});
+      currentBusinessSettings.workingHours = collectWorkingHoursFromDom();
       const nextSettings = {
         businessName: document.getElementById('settingsBusinessName').value.trim(),
         businessSubtitle: document.getElementById('settingsBusinessSubtitle').value.trim(),
