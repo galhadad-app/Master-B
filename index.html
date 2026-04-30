@@ -3367,8 +3367,8 @@ body:has(.modal-backdrop.show) .toast{
 
     function getWazeLink(){
       const address = String((currentBusinessSettings && currentBusinessSettings.businessAddress) || '').trim();
-      const fallbackName = String((currentBusinessSettings && currentBusinessSettings.businessName) || 'מספרה').trim();
-      const q = encodeURIComponent(address || fallbackName);
+      if(!address) return '#';
+      const q = encodeURIComponent(address);
       return 'https://www.waze.com/ul?q=' + q + '&navigate=yes';
     }
 
@@ -3410,9 +3410,15 @@ body:has(.modal-backdrop.show) .toast{
         wazeBtn.setAttribute('target', '_blank');
         wazeBtn.setAttribute('rel', 'noopener noreferrer');
         wazeBtn.onclick = function(e){
+          const href = getWazeLink();
+          if(href === '#'){
+            e.preventDefault();
+            showToast('אין כתובת עסק מוגדרת.', true);
+            return;
+          }
           e.preventDefault();
           playSelectSound();
-          window.open(getWazeLink(), '_blank', 'noopener');
+          window.open(href, '_blank', 'noopener');
         };
       }
     }
