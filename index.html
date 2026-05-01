@@ -3002,7 +3002,7 @@ body:has(.modal-backdrop.show) .toast{
         businessSubtitle: document.getElementById('settingsBusinessSubtitle').value.trim(),
         businessDescription: document.getElementById('settingsBusinessDescription').value.trim(),
         importantNotice: document.getElementById('settingsImportantNotice').value.trim(),
-        whatsappNumber: normalizePhone(document.getElementById('settingsWhatsapp').value).slice(0,10),
+        whatsappNumber: normalizePhone(document.getElementById('settingsWhatsapp').value),
         businessAddress: document.getElementById('settingsBusinessAddress').value.trim(),
         ownerCode: document.getElementById('settingsOwnerCode').value.replace(/\D/g, '').slice(0,4) || BUSINESS_TEMPLATE.ownerCode,
         services: currentBusinessSettings.services,
@@ -3362,7 +3362,7 @@ body:has(.modal-backdrop.show) .toast{
     function playBookSound(){ const a = document.getElementById('bookSound'); if(!a) return; a.currentTime = 0; a.play().catch(()=>{}); }
 
     function getBusinessPhoneRaw(){
-      return String((currentBusinessSettings && currentBusinessSettings.whatsappNumber) || '').replace(/\D/g, '').slice(0, 10);
+      return String((currentBusinessSettings && currentBusinessSettings.whatsappNumber) || '').replace(/\D/g, '');
     }
 
     function getWhatsappLink(){
@@ -3485,7 +3485,7 @@ document.getElementById('bookBtn').addEventListener('click', bookAppointment);
     document.getElementById('settingsLogoInput').addEventListener('change', () => handleSettingsImageChange('settingsLogoInput', 'logoSrc'));
     document.getElementById('settingsHeroInput').addEventListener('change', () => handleSettingsImageChange('settingsHeroInput', 'heroBg'));
     document.getElementById('settingsOwnerCode').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0,4); });
-    document.getElementById('settingsWhatsapp').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0,10); });
+    document.getElementById('settingsWhatsapp').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, ''); });
     document.getElementById('addServiceBtn').addEventListener('click', () => {
       currentBusinessSettings.services.push({ label:'', value:'' });
       renderServiceBuilder();
