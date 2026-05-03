@@ -825,12 +825,82 @@ body:has(.modal-backdrop.show) .toast{
 .hour-row.is-closed .hour-times{display:none !important;}
 @media (max-width:420px){.hour-row{grid-template-columns:54px 72px minmax(0,1fr) !important;gap:6px !important;padding:8px !important;}.closed-toggle{width:72px !important;height:36px !important;font-size:11px !important;padding:0 7px !important;}.closed-toggle::before{width:22px;height:22px;left:7px;}.hour-row.is-closed .closed-toggle::before{left:42px;}.closed-toggle span{padding-inline-end:25px;}.hour-row.is-closed .closed-toggle span{padding-inline-start:25px;}.hour-row .day-name{font-size:13px !important;height:36px !important;}.time-split{height:36px;padding:0 6px;gap:3px;}.time-split input{height:26px !important;font-size:13px !important;}}
 
+
+/* ===== Business freeze screen ===== */
+body.business-frozen{overflow:hidden;}
+.frozen-screen{
+  position:fixed;
+  inset:0;
+  z-index:100000;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:22px;
+  text-align:center;
+  background:
+    radial-gradient(circle at top, rgba(215,180,109,.13), transparent 34%),
+    linear-gradient(180deg,#090b10 0%,#111621 100%);
+  color:var(--text);
+}
+.frozen-screen.show{display:flex;}
+.frozen-card{
+  width:min(92vw,430px);
+  border-radius:30px;
+  padding:30px 24px 28px;
+  background:linear-gradient(180deg,rgba(21,25,34,.96),rgba(13,18,27,.96));
+  border:1px solid rgba(215,180,109,.14);
+  box-shadow:0 26px 70px rgba(0,0,0,.48);
+}
+.frozen-icon{
+  width:72px;
+  height:72px;
+  margin:0 auto 16px;
+  border-radius:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#f1d18f;
+  background:rgba(215,180,109,.08);
+  border:1px solid rgba(215,180,109,.18);
+}
+.frozen-card h1{
+  margin:0 0 10px;
+  font-size:25px;
+  line-height:1.35;
+  color:#f7e7c3;
+}
+.frozen-card p{
+  margin:0;
+  color:var(--muted);
+  font-size:15px;
+  line-height:1.8;
+  white-space:pre-wrap;
+}
+@media(max-width:480px){
+  .frozen-card{padding:26px 18px;border-radius:26px;}
+  .frozen-card h1{font-size:22px;}
+  .frozen-icon{width:64px;height:64px;border-radius:22px;}
+}
+
 </style>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0d1016">
 </head>
 <body>
   <div id="loader"><img id="loaderLogo" src="logo.png" alt="לוגו"></div>
+
+  <div id="businessFrozenScreen" class="frozen-screen" aria-live="polite" aria-hidden="true">
+    <div class="frozen-card">
+      <div class="frozen-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="34" height="34" fill="currentColor">
+          <path d="M17 9V7A5 5 0 0 0 7 7v2H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1Zm-8 0V7a3 3 0 0 1 6 0v2H9Zm4 5.73V18h-2v-3.27a2 2 0 1 1 2 0Z"/>
+        </svg>
+      </div>
+      <h1>האפליקציה לא פעילה כעת</h1>
+      <p id="businessFrozenMessage">עמכם הסליחה, נסו שוב מאוחר יותר.</p>
+    </div>
+  </div>
+
 
   <div class="app">
     <section id="clientScreen" class="screen active">
@@ -1266,6 +1336,9 @@ body:has(.modal-backdrop.show) .toast{
       ownerCode: '1234',
       businessDescription: '',
       importantNotice: '',
+      isFrozen: false,
+      appFrozen: false,
+      freezeMessage: 'האפליקציה לא פעילה כעת. עמכם הסליחה, נסו שוב מאוחר יותר.',
       sounds: {
         music: 'music.mp3',
         select: 'select.mp3',
@@ -1377,6 +1450,7 @@ body:has(.modal-backdrop.show) .toast{
       currentBusinessSettings = mergeBusinessSettings({ ...currentBusinessSettings, ...nextSettings });
       localStorage.setItem(BUSINESS_SETTINGS_STORAGE_KEY, JSON.stringify(currentBusinessSettings));
       window.__lastBusinessSettings = currentBusinessSettings;
+      updateBusinessFrozenScreen(currentBusinessSettings);
     }
 
     function getSettingsForCloud(settings = currentBusinessSettings){
@@ -1389,10 +1463,33 @@ body:has(.modal-backdrop.show) .toast{
       };
     }
 
+
+    function isBusinessFrozen(settings = currentBusinessSettings){
+      return Boolean(settings && (settings.isFrozen === true || settings.appFrozen === true || settings.status === 'frozen'));
+    }
+
+    function updateBusinessFrozenScreen(settings = currentBusinessSettings){
+      const frozen = isBusinessFrozen(settings);
+      const screen = document.getElementById('businessFrozenScreen');
+      const messageEl = document.getElementById('businessFrozenMessage');
+      if(!screen) return;
+      const defaultMessage = 'עמכם הסליחה, נסו שוב מאוחר יותר.';
+      const customMessage = String(settings?.freezeMessage || settings?.frozenMessage || '').trim();
+      if(messageEl) messageEl.textContent = customMessage || defaultMessage;
+      screen.classList.toggle('show', frozen);
+      screen.setAttribute('aria-hidden', frozen ? 'false' : 'true');
+      document.body.classList.toggle('business-frozen', frozen);
+      if(frozen){
+        const loader = document.getElementById('loader');
+        if(loader) loader.classList.add('hide');
+      }
+    }
+
     function applyCloudBusinessSettings(settings){
       currentBusinessSettings = mergeBusinessSettings(settings || {});
       localStorage.setItem(BUSINESS_SETTINGS_STORAGE_KEY, JSON.stringify(currentBusinessSettings));
       window.__lastBusinessSettings = currentBusinessSettings;
+      updateBusinessFrozenScreen(currentBusinessSettings);
       syncSettingsTextFields();
       applyBusinessTemplate();
       rerenderAll();
@@ -1500,6 +1597,7 @@ body:has(.modal-backdrop.show) .toast{
       renderHoursGrid();
       applyReturningCustomer();
       bindContactButtons();
+      updateBusinessFrozenScreen(settings);
     }
 
     function renderServiceBuilder(){
