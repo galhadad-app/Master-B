@@ -2002,7 +2002,10 @@ body.business-frozen{overflow:hidden;}
     }
 
     function formatDisplayPhone(phone){
-      return normalizePhone(phone);
+      const digits = String(phone || '').replace(/\D/g, '');
+      if(/^9720\d{8}$/.test(digits)) return `0${digits.slice(4)}`;
+      if(/^972\d{9}$/.test(digits)) return `0${digits.slice(3)}`;
+      return digits;
     }
 
     function normalizeAppointmentRecord(raw = {}, id = ''){
@@ -2736,13 +2739,7 @@ body.business-frozen{overflow:hidden;}
       });
     }
 
-    function normalizePhone(phone){
-      let p = String(phone || '').replace(/\D/g, '');
-      if(p.startsWith('9720') && p.length === 13) p = '0' + p.slice(4);
-      else if(p.startsWith('972') && p.length === 12) p = '0' + p.slice(3);
-      else if(p.startsWith('5') && p.length === 9) p = '0' + p;
-      return p;
-    }
+    function normalizePhone(phone){ return String(phone || '').replace(/\D/g, ''); }
 
     function getUniqueCustomers(){
       const customerMap = new Map();
@@ -3266,7 +3263,6 @@ body.business-frozen{overflow:hidden;}
       const helper = document.getElementById("myAppointmentHelperText");
 
       if(phoneOverride) phoneInput.value = phone;
-      else phoneInput.value = phone.slice(0, 10);
 
       if(!/^05\d{8}$/.test(phone)){
         helper.textContent = "יש להזין מספר פלאפון מלא שמתחיל ב-05.";
@@ -3520,7 +3516,7 @@ body.business-frozen{overflow:hidden;}
       const name = `${firstName} ${lastName}`.trim();
       const phoneRaw = document.getElementById('clientPhone').value.trim();
       const service = document.getElementById('clientService').value;
-      const phone = normalizePhone(phoneRaw);
+      const phone = formatDisplayPhone(phoneRaw);
       if(!selectedDate) return showToast('יש לבחור יום.');
       if(isDateClosed(selectedDate)) return showToast('העסק סגור ביום זה.', true);
       if(!selectedTime) return showToast('יש לבחור שעה פנויה.');
