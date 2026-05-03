@@ -882,6 +882,79 @@ body.business-frozen{overflow:hidden;}
   .frozen-icon{width:64px;height:64px;border-radius:22px;}
 }
 
+
+/* ===== Compact QR icon button ===== */
+.qr-mini-row{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  margin-top:12px;
+  margin-bottom:10px;
+}
+.qr-icon-btn{
+  width:54px;
+  height:54px;
+  border-radius:17px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  color:#f7e7c3;
+  background:
+    radial-gradient(circle at 30% 18%, rgba(215,180,109,.20), transparent 38%),
+    linear-gradient(180deg,#171d29 0%,#0f151f 100%);
+  border:1px solid rgba(215,180,109,.28);
+  box-shadow:
+    0 12px 28px rgba(0,0,0,.26),
+    inset 0 1px 0 rgba(255,255,255,.05);
+  transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease, color .2s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.qr-icon-btn:hover,
+.qr-icon-btn:active{
+  transform:translateY(-2px);
+  color:#ffffff;
+  border-color:rgba(215,180,109,.46);
+  box-shadow:
+    0 16px 34px rgba(0,0,0,.34),
+    0 0 0 3px rgba(215,180,109,.06),
+    inset 0 1px 0 rgba(255,255,255,.07);
+}
+.qr-modal{width:min(92vw,380px);text-align:center;}
+.qr-box{
+  width:210px;
+  height:210px;
+  border-radius:24px;
+  background:#fff;
+  margin:12px auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:12px;
+  box-shadow:0 16px 34px rgba(0,0,0,.30);
+}
+.qr-box canvas,.qr-box img{width:186px!important;height:186px!important;display:block;}
+.qr-link-field{
+  width:100%;
+  direction:ltr;
+  text-align:left;
+  font-size:12px;
+  border-radius:14px;
+  padding:11px 12px;
+  color:#f4f1ea;
+  background:#0f131b;
+  border:1px solid rgba(255,255,255,.08);
+}
+.qr-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;}
+.qr-actions button{margin-top:0!important;padding:12px 10px!important;border-radius:15px!important;font-size:13px!important;}
+.qr-close-btn{margin-top:10px!important;}
+@media(max-width:520px){.qr-actions{grid-template-columns:1fr}.qr-actions button{width:100%;}}
+@media(max-width:420px){
+  .qr-icon-btn{width:50px;height:50px;border-radius:16px;}
+  .qr-box{width:194px;height:194px}
+  .qr-box canvas,.qr-box img{width:170px!important;height:170px!important}
+}
+
 </style>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0d1016">
@@ -1115,6 +1188,20 @@ body.business-frozen{overflow:hidden;}
               <div class="settings-actions">
                 <button class="primary-btn" id="saveSettingsBtn">שמור הגדרות</button>
                 <button class="danger-btn" id="resetSettingsBtn">איפוס הגדרות</button>
+              <div class="qr-mini-row">
+                <button class="qr-icon-btn" id="openQrBtn" type="button" onclick="openQrModal()" aria-label="יצירת QR" title="יצירת QR">
+                  <svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M4 4h6v6H4z"/>
+                    <path d="M14 4h6v6h-6z"/>
+                    <path d="M4 14h6v6H4z"/>
+                    <path d="M14 14h2"/>
+                    <path d="M18 14h2v2"/>
+                    <path d="M14 18h2v2"/>
+                    <path d="M20 20h-2"/>
+                  </svg>
+                </button>
+              </div>
+
               </div>
               <div class="helper">דף הלקוח נשאר בנאמנות לגרסה המקורית, ורק מסך בעל העסק קיבל את לשונית ההגדרות המורחבת.</div>
           </div>
@@ -3919,6 +4006,95 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1600);
   });
 })();
+
+    const APP_BASE_URL = 'https://galhadad-app.github.io/Master-B/';
+
+    function getBusinessAppLink(){
+      const businessId =
+        (typeof BUSINESS_ID !== 'undefined' && BUSINESS_ID)
+        ? BUSINESS_ID
+        : (new URLSearchParams(window.location.search).get('business') || 'clean-barber-template-v3');
+
+      return APP_BASE_URL + '?business=' + encodeURIComponent(businessId);
+    }
+
+    function openQrModal(){
+      const link = getBusinessAppLink();
+      const modal = document.getElementById('qrModal');
+      const box = document.getElementById('businessQrBox');
+      const input = document.getElementById('businessQrLink');
+
+      if(input) input.value = link;
+      if(modal) modal.classList.add('show');
+
+      if(box){
+        box.innerHTML = '';
+        const img = document.createElement('img');
+        img.alt = 'QR';
+        img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(link);
+        box.appendChild(img);
+      }
+    }
+
+    function closeQrModal(){
+      const modal = document.getElementById('qrModal');
+      if(modal) modal.classList.remove('show');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const copyQrLinkBtn = document.getElementById('copyQrLinkBtn');
+      if(copyQrLinkBtn){
+        copyQrLinkBtn.addEventListener('click', async () => {
+          const link = getBusinessAppLink();
+          try{
+            await navigator.clipboard.writeText(link);
+            if(typeof showToast === 'function') showToast('הקישור הועתק.');
+          }catch(e){
+            const input = document.getElementById('businessQrLink');
+            if(input){ input.select(); document.execCommand('copy'); }
+            if(typeof showToast === 'function') showToast('הקישור הועתק.');
+          }
+        });
+      }
+
+      const openBusinessQrLinkBtn = document.getElementById('openBusinessQrLinkBtn');
+      if(openBusinessQrLinkBtn){
+        openBusinessQrLinkBtn.addEventListener('click', () => {
+          window.open(getBusinessAppLink(), '_blank', 'noopener');
+        });
+      }
+
+      const downloadQrBtn = document.getElementById('downloadQrBtn');
+      if(downloadQrBtn){
+        downloadQrBtn.addEventListener('click', async () => {
+          const link = getBusinessAppLink();
+          const imgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=900x900&data=' + encodeURIComponent(link);
+          const a = document.createElement('a');
+          a.href = imgUrl;
+          a.download = 'business-qr.png';
+          a.target = '_blank';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        });
+      }
+    });
+
 </script>
+
+  <div id="qrModal" class="modal-backdrop">
+    <div class="modal qr-modal">
+      <h3>QR לאפליקציה</h3>
+      <div id="businessQrBox" class="qr-box"></div>
+      <input id="businessQrLink" class="qr-link-field" readonly />
+      <div class="qr-actions">
+        <button class="secondary-btn" id="copyQrLinkBtn" type="button">העתק</button>
+        <button class="secondary-btn" id="downloadQrBtn" type="button">הורד</button>
+        <button class="secondary-btn" id="openBusinessQrLinkBtn" type="button">פתח</button>
+      </div>
+      <button class="secondary-action-btn qr-close-btn" type="button" onclick="closeQrModal()">סגור</button>
+    </div>
+  </div>
+
 </body>
 </html>
