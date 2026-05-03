@@ -1911,6 +1911,40 @@ body.business-frozen{overflow:hidden;}
       app = firebase.initializeApp(BUSINESS_TEMPLATE.firebaseConfig, firebaseAppName);
     }
     const db = app.firestore();
+
+    function getLocalDateKey(date = new Date()){
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    async function trackDailyVisit(){
+      const businessId = BUSINESS_TEMPLATE.businessId;
+      if(!businessId) return;
+
+      const todayKey = getLocalDateKey();
+      const localKey = `daily_visit_counted_${businessId}_${todayKey}`;
+
+      // סופר כל מכשיר פעם אחת ביום בלבד, גם אם מרעננים את העמוד כמה פעמים.
+      if(localStorage.getItem(localKey)) return;
+
+      try{
+        await db.collection('businessSettings').doc(businessId).set({
+          visits: {
+            [todayKey]: firebase.firestore.FieldValue.increment(1)
+          },
+          visitsUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge:true });
+
+        localStorage.setItem(localKey, String(Date.now()));
+      }catch(err){
+        console.error('Daily visit tracking failed:', err);
+      }
+    }
+
+    trackDailyVisit();
+
     const APPOINTMENTS_COLLECTION = 'appointments';
     const WAITLIST_COLLECTION = 'waitlist';
     const WAITLIST_CLAIMS_COLLECTION = 'waitlistClaims';
