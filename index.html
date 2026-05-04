@@ -1399,11 +1399,11 @@ body.business-frozen{overflow:hidden;}
     */
     const urlParams = new URLSearchParams(window.location.search);
     const requestedBusinessId = (urlParams.get('business') || urlParams.get('biz') || '').trim();
-    const ACTIVE_BUSINESS_ID = (requestedBusinessId || 'clean-barber-template-v3')
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, '-')
+    const DEFAULT_BUSINESS_ID = 'G7W7VxeCdQ9XWkE7Che';
+    const ACTIVE_BUSINESS_ID = (requestedBusinessId || DEFAULT_BUSINESS_ID)
+      .replace(/[^a-zA-Z0-9_-]/g, '-')
       .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '') || 'clean-barber-template-v3';
+      .replace(/^-|-$/g, '') || DEFAULT_BUSINESS_ID;
 
     /*
       זה הלב של התבנית.
@@ -1442,12 +1442,14 @@ body.business-frozen{overflow:hidden;}
       },
       services: [],
       firebaseConfig: {
-        apiKey: 'AIzaSyCba0XlBoAWJ1eiH6wqer74sSiMyRKfK2s',
-        authDomain: 'game1-9d372.firebaseapp.com',
-        projectId: 'game1-9d372',
-        storageBucket: 'game1-9d372.appspot.com',
-        messagingSenderId: '387028062033',
-        appId: '1:387028062033:web:7bf29040c7bb4b15d54d70'
+        // חשוב: להחליף את apiKey / messagingSenderId / appId לפי Web app של הפרויקט החדש ב-Firebase.
+        // Project settings > General > Your apps > Web app > Firebase SDK snippet.
+        apiKey: 'PASTE_YOUR_NEW_API_KEY_HERE',
+        authDomain: 'gal-business-system.firebaseapp.com',
+        projectId: 'gal-business-system',
+        storageBucket: 'gal-business-system.firebasestorage.app',
+        messagingSenderId: 'PASTE_YOUR_NEW_MESSAGING_SENDER_ID_HERE',
+        appId: 'PASTE_YOUR_NEW_APP_ID_HERE'
       }
     };
 
@@ -1991,6 +1993,16 @@ body.business-frozen{overflow:hidden;}
     }
 
     const firebaseAppName = `biz-${BUSINESS_TEMPLATE.businessId}`;
+    const firebaseConfigValues = Object.values(BUSINESS_TEMPLATE.firebaseConfig || {});
+    const firebaseConfigMissing = firebaseConfigValues.some(value => String(value || '').includes('PASTE_YOUR_NEW_'));
+    if(firebaseConfigMissing){
+      setTimeout(() => {
+        if(typeof showToast === 'function'){
+          showToast('חסר Firebase Config של הפרויקט החדש. הדבק את הנתונים מ־Project settings > Your apps.', true);
+        }
+      }, 1200);
+      console.warn('Firebase config is missing. Replace placeholders in BUSINESS_TEMPLATE.firebaseConfig.');
+    }
     let app;
     try {
       app = firebase.app(firebaseAppName);
@@ -4013,7 +4025,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const businessId =
         (typeof BUSINESS_ID !== 'undefined' && BUSINESS_ID)
         ? BUSINESS_ID
-        : (new URLSearchParams(window.location.search).get('business') || 'clean-barber-template-v3');
+        : (new URLSearchParams(window.location.search).get('business') || (typeof ACTIVE_BUSINESS_ID !== 'undefined' ? ACTIVE_BUSINESS_ID : 'G7W7VxeCdQ9XWkE7Che'));
 
       return APP_BASE_URL + '?business=' + encodeURIComponent(businessId);
     }
