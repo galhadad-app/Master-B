@@ -3960,15 +3960,24 @@ document.addEventListener('DOMContentLoaded', () => {
 (function(){
   function getSavedReturningCustomerForWelcome(){
     try{
-      const keyPrefix='returning-customer-details';
-      const keys=Object.keys(localStorage).filter(k=>k.startsWith(keyPrefix));
-      for(const key of keys){
-        try{
-          const data=JSON.parse(localStorage.getItem(key)||'{}');
-          const firstName=String(data.firstName||'').trim();
-          if(firstName) return data;
-        }catch(e){}
+      // חשוב: לא מחפשים יותר "כל לקוח ישן" מהדפדפן.
+      // הברכה בכניסה תופיע רק ללקוח שנשמר תחת העסק הנוכחי בלבד.
+      if(typeof getSavedReturningCustomer === 'function'){
+        return getSavedReturningCustomer();
       }
+
+      const keyPrefix = 'returning-customer-details';
+      const businessId = (typeof currentBusinessSettings !== 'undefined' && currentBusinessSettings && currentBusinessSettings.businessId)
+        || (typeof BUSINESS_TEMPLATE !== 'undefined' && BUSINESS_TEMPLATE && BUSINESS_TEMPLATE.businessId)
+        || new URLSearchParams(location.search).get('business')
+        || 'default';
+      const exactKey = `${keyPrefix}-${businessId}`;
+      const data = JSON.parse(localStorage.getItem(exactKey) || '{}');
+      const firstName = String(data.firstName || '').trim();
+      const lastName = String(data.lastName || '').trim();
+      const phone = String(data.phone || '').replace(/\D/g,'').slice(0,10);
+      if(!firstName || !lastName || !/^05\d{8}$/.test(phone)) return null;
+      return { firstName, lastName, phone };
     }catch(err){}
     return null;
   }
