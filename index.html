@@ -1874,14 +1874,16 @@ body.business-frozen{overflow:hidden;}
     }
 
     function resetBusinessSettingsToDefault(){
-      const preservedLogoSrc = currentBusinessSettings && currentBusinessSettings.logoSrc ? currentBusinessSettings.logoSrc : BUSINESS_TEMPLATE.logoSrc;
-      const preservedHeroBg = currentBusinessSettings && currentBusinessSettings.heroBg ? currentBusinessSettings.heroBg : BUSINESS_TEMPLATE.heroBg;
+      // איפוס מלא: מחזיר גם את הלוגו והרקע לברירת המחדל של הקובץ.
+      // הסרה גם של מפתחות ישנים למקרה שהיו גרסאות קודמות ששמרו תמונות בנפרד.
+      try {
+        localStorage.removeItem('logoDataUrl');
+        localStorage.removeItem('heroBgDataUrl');
+        localStorage.removeItem(`logoDataUrl-${BUSINESS_TEMPLATE.businessId}`);
+        localStorage.removeItem(`heroBgDataUrl-${BUSINESS_TEMPLATE.businessId}`);
+      } catch(err){}
 
-      currentBusinessSettings = mergeBusinessSettings({
-        ...JSON.parse(JSON.stringify(BUSINESS_TEMPLATE)),
-        logoSrc: preservedLogoSrc,
-        heroBg: preservedHeroBg
-      });
+      currentBusinessSettings = mergeBusinessSettings(JSON.parse(JSON.stringify(BUSINESS_TEMPLATE)));
       localStorage.setItem(BUSINESS_SETTINGS_STORAGE_KEY, JSON.stringify(currentBusinessSettings));
       window.__lastBusinessSettings = JSON.parse(JSON.stringify(currentBusinessSettings));
 
@@ -1978,7 +1980,7 @@ body.business-frozen{overflow:hidden;}
         showToast('האיפוס נשמר במכשיר, אבל לא הצליח להסתנכרן לענן.', true);
       });
       closeConfirmResetModal();
-      showToast('כל ההגדרות אופסו בהצלחה. הלוגו והרקע נשמרו.');
+      showToast('כל ההגדרות אופסו בהצלחה. הלוגו והרקע חזרו לברירת המחדל.');
     }
 
     function escapeHtml(value){
