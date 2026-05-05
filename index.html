@@ -1881,6 +1881,9 @@ body.business-frozen{overflow:hidden;}
         localStorage.removeItem('heroBgDataUrl');
         localStorage.removeItem(`logoDataUrl-${BUSINESS_TEMPLATE.businessId}`);
         localStorage.removeItem(`heroBgDataUrl-${BUSINESS_TEMPLATE.businessId}`);
+        localStorage.removeItem('returning-customer-details');
+        localStorage.removeItem(`returning-customer-details-${BUSINESS_TEMPLATE.businessId}`);
+        localStorage.removeItem(`returning-customer-details-${ACTIVE_BUSINESS_ID}`);
       } catch(err){}
 
       currentBusinessSettings = mergeBusinessSettings(JSON.parse(JSON.stringify(BUSINESS_TEMPLATE)));
@@ -2569,6 +2572,7 @@ body.business-frozen{overflow:hidden;}
         const waiting = waitlistEntries.find(item => item.id === entry.id);
         if(waiting) waiting.status = 'נקבע';
         syncBusyMapFromAppointments();
+        reconcileReturningCustomerWithAppointments();
         rerenderAll();
         openSuccessModal(formatDatePrettyFromKey(dateKey), time, service || 'התור נקבע מרשימת ההמתנה');
         clearWaitlistClaimParams();
@@ -3379,6 +3383,8 @@ body.business-frozen{overflow:hidden;}
         return;
       }
       activeClientAppointment = found;
+      saveReturningCustomerFromKnownData('', '', found.name || '', found.phone || phone);
+      applyReturningCustomer();
       document.getElementById("myApptName").textContent = found.name || "-";
       document.getElementById("myApptDate").textContent = found.date === formatDateKey(today) ? "היום" : formatDatePrettyFromKey(found.date);
       document.getElementById("myApptTime").textContent = found.time || "-";
@@ -3526,6 +3532,26 @@ body.business-frozen{overflow:hidden;}
       saveReturningCustomer(cleanFirst, cleanLast, phone);
     }
 
+    function reconcileReturningCustomerWithAppointments(){
+      const saved = getSavedReturningCustomer();
+      if(!saved || !Array.isArray(appointments) || !appointments.length) return;
+      const match = appointments.find(item =>
+        normalizePhone(item.phone) === normalizePhone(saved.phone) &&
+        isFutureOrTodayAppointment(item) &&
+        isActiveAppointment(item) &&
+        !isClosedDateKey(item.date)
+      );
+      if(!match){
+        localStorage.removeItem(getReturningCustomerStorageKey());
+        applyReturningCustomer();
+        return;
+      }
+      if(match.name){
+        saveReturningCustomerFromKnownData('', '', match.name, match.phone || saved.phone);
+        applyReturningCustomer();
+      }
+    }
+
     function ensureReturningCustomerBox(){
       let box = document.getElementById('returningCustomerBox');
       if(box) return box;
@@ -3648,7 +3674,7 @@ body.business-frozen{overflow:hidden;}
         selectedTime = null;
         document.getElementById('selectedTimeText').textContent = 'עדיין לא נבחרה שעה';
         updateBookButtonState();
-      }catch(err){ console.error(err); showToast('התור נשמר בהצלחה.', false); }
+      }catch(err){ console.error(err); showToast('שגיאה בשמירת התור. נסה שוב בעוד רגע.', true); }
     }
 
     function allowHebrewOnly(input){ input.value = input.value.replace(/[^\u0590-\u05FF\s]/g, ''); }
@@ -3988,8 +4014,22 @@ document.addEventListener('DOMContentLoaded', () => {
       const importantModal=document.getElementById('importantNoticeModal');
       if(importantModal && importantModal.classList.contains('show')) return;
 
-      const saved=getSavedReturningCustomerForWelcome();
+      let saved=getSavedReturningCustomerForWelcome();
       if(!saved) return;
+      if(Array.isArray(appointments) && appointments.length){
+        const match = appointments.find(item =>
+          normalizePhone(item.phone) === normalizePhone(saved.phone) &&
+          isFutureOrTodayAppointment(item) &&
+          isActiveAppointment(item) &&
+          !isClosedDateKey(item.date)
+        );
+        if(!match) return;
+        const fullName = String(match.name || '').trim();
+        if(fullName){
+          const parts = fullName.split(/\s+/).filter(Boolean);
+          saved = { firstName: parts.shift() || saved.firstName, lastName: parts.join(' ') || saved.lastName, phone: saved.phone };
+        }
+      }
 
       const modal=document.getElementById('returningWelcomeModal');
       const text=document.getElementById('returningWelcomeText');
