@@ -1416,6 +1416,10 @@ body.business-frozen{overflow:hidden;}
       businessTypeLabel: 'מספרה',
       ownerBadge: 'עמוד בעל העסק',
       whatsappNumber: '',
+      whatsappEnabled: true,
+      botEnabled: true,
+      ownerAccess: false,
+      clientOwnerAccess: false,
       businessAddress: '',
       bookingTitle: 'קביעת תור!',
       logoSrc: 'logo.png',
@@ -3465,6 +3469,13 @@ body.business-frozen{overflow:hidden;}
       const input = document.getElementById('ownerCodeInput');
       const code = input.value.replace(/\D/g, '').slice(0,4);
       if(code.length < 4) return;
+      const ownerAccessOpen = currentBusinessSettings && (currentBusinessSettings.ownerAccess === true || currentBusinessSettings.clientOwnerAccess === true);
+      if(!ownerAccessOpen){
+        showToast('גישת בעל עסק אינה פתוחה כרגע.', true);
+        input.value = '';
+        setTimeout(() => input.focus(), 50);
+        return;
+      }
       if(code === currentBusinessSettings.ownerCode){
         const action = codeModalAction;
         closeOwnerModal();
@@ -3695,7 +3706,13 @@ body.business-frozen{overflow:hidden;}
       const phone = getBusinessPhoneRaw();
       if(!phone) return '#';
       const intl = phone.startsWith('0') ? ('972' + phone.slice(1)) : phone;
-      return 'https://wa.me/' + intl;
+      const businessId = String((currentBusinessSettings && currentBusinessSettings.businessId) || ACTIVE_BUSINESS_ID || '').trim();
+      const botEnabled = !(currentBusinessSettings && (currentBusinessSettings.whatsappEnabled === false || currentBusinessSettings.botEnabled === false));
+      const base = 'https://wa.me/' + intl;
+      if(botEnabled && businessId){
+        return base + '?text=' + encodeURIComponent('hi_' + businessId);
+      }
+      return base;
     }
 
     function getPhoneLink(){
