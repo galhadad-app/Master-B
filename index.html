@@ -955,6 +955,187 @@ body.business-frozen{overflow:hidden;}
   .qr-box canvas,.qr-box img{width:170px!important;height:170px!important}
 }
 
+
+/* ===== Classic thin monthly business report ===== */
+.stats-report{
+  display:grid;
+  gap:12px;
+  direction:rtl;
+  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.006));
+  border:1px solid rgba(255,255,255,.055);
+  border-radius:22px;
+  padding:16px;
+}
+.stats-report-head{
+  text-align:center;
+  padding:2px 0 10px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.stats-report-kicker{
+  display:block;
+  width:max-content;
+  margin:0 auto 7px;
+  padding:0;
+  border:none;
+  background:transparent;
+  color:rgba(215,180,109,.86);
+  font-size:11px;
+  letter-spacing:.08em;
+  font-weight:900;
+}
+.stats-report-head h2{
+  margin:0;
+  font-size:18px;
+  color:#f6f0e4;
+  line-height:1.35;
+  font-weight:900;
+}
+.stats-report-head p{
+  margin:5px 0 0;
+  color:rgba(244,241,234,.46);
+  font-size:12px;
+  line-height:1.5;
+}
+.stats-value-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:0;
+  border-top:1px solid rgba(255,255,255,.045);
+  border-bottom:1px solid rgba(255,255,255,.045);
+}
+.stats-value-card,
+.stats-impact-card{
+  display:grid;
+  grid-template-columns:92px 70px 1fr;
+  align-items:center;
+  gap:10px;
+  background:transparent;
+  border:none;
+  border-radius:0;
+  padding:11px 2px;
+  text-align:right;
+  min-width:0;
+  box-shadow:none;
+  border-bottom:1px solid rgba(255,255,255,.055);
+}
+.stats-value-card:last-child,
+.stats-impact-card:last-child{border-bottom:none}
+.stats-value-card span,
+.stats-impact-card span{
+  display:block;
+  color:rgba(244,241,234,.72);
+  font-size:13px;
+  font-weight:900;
+  margin:0;
+}
+.stats-value-card strong,
+.stats-impact-card strong{
+  display:block;
+  color:#efd391;
+  font-size:24px;
+  line-height:1;
+  font-weight:950;
+  letter-spacing:-.03em;
+  text-align:center;
+}
+.stats-value-card small,
+.stats-impact-card small{
+  display:block;
+  color:rgba(244,241,234,.42);
+  font-size:11px;
+  line-height:1.45;
+  margin:0;
+}
+.stats-report-section{
+  border-radius:0;
+  padding:12px 0;
+  background:transparent;
+  border:none;
+  border-bottom:1px solid rgba(255,255,255,.06);
+}
+.stats-section-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+.stats-section-head h3{
+  margin:0;
+  font-size:14px;
+  color:#f7e7c3;
+  font-weight:900;
+}
+.stats-section-head span{
+  color:rgba(244,241,234,.46);
+  font-size:11px;
+  line-height:1.5;
+  text-align:left;
+}
+.stats-source-bars{display:grid;gap:9px}
+.stats-source-row{display:grid;gap:6px}
+.stats-source-meta{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  font-size:12px;
+  color:#f4f1ea;
+}
+.stats-source-meta strong{font-weight:900;color:rgba(244,241,234,.78)}
+.stats-source-meta span{color:#efd391;font-weight:950}
+.stats-track{
+  height:6px;
+  border-radius:999px;
+  background:rgba(255,255,255,.055);
+  border:none;
+  overflow:hidden;
+}
+.stats-fill{
+  height:100%;
+  border-radius:999px;
+  background:linear-gradient(90deg,rgba(159,121,59,.75),rgba(224,191,118,.95));
+  transition:width .35s ease;
+}
+.stats-fill.alt{background:linear-gradient(90deg,rgba(80,126,93,.75),rgba(126,224,163,.95))}
+.stats-impact-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:0;
+  border-top:1px solid rgba(255,255,255,.045);
+  border-bottom:1px solid rgba(255,255,255,.045);
+}
+.stats-report-note{
+  padding:11px 0 0;
+  border-radius:0;
+  background:transparent;
+  border:none;
+  color:rgba(247,231,195,.76);
+  font-size:12px;
+  line-height:1.75;
+  text-align:center;
+}
+@media(max-width:720px){
+  .stats-report{padding:14px;border-radius:20px}
+  .stats-section-head{display:grid;text-align:center}
+  .stats-section-head span{text-align:center}
+  .stats-value-card,
+  .stats-impact-card{grid-template-columns:78px 58px 1fr;gap:8px;padding:10px 0}
+  .stats-value-card strong,
+  .stats-impact-card strong{font-size:22px}
+}
+@media(max-width:390px){
+  .stats-report{padding:12px}
+  .stats-value-card,
+  .stats-impact-card{grid-template-columns:68px 52px 1fr}
+  .stats-value-card span,
+  .stats-impact-card span{font-size:12px}
+  .stats-value-card strong,
+  .stats-impact-card strong{font-size:20px}
+  .stats-value-card small,
+  .stats-impact-card small{font-size:10.5px}
+}
+
 </style>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0d1016">
@@ -1251,24 +1432,79 @@ body.business-frozen{overflow:hidden;}
         <div id="statsPanel" class="owner-panel">
           <div class="owner-panel-card">
             
-<div class="section-title"><h2>סטטיסטיקה</h2></div>
-<div class="stats-soft-wrap">
-  <div class="stats-soft-summary">
-    <div class="stats-soft-card"><strong id="statsRevenue">₪0</strong><span>הכנסות משוערות</span></div>
-    <div class="stats-soft-card"><strong id="statsUpcoming">0</strong><span>תורים החודש</span></div>
-    <div class="stats-soft-card"><strong id="statsCustomers">0</strong><span>לקוחות חדשים החודש</span></div>
+
+<div class="stats-report">
+  <div class="stats-report-head">
+    <span class="stats-report-kicker">דוח פעילות חודשי</span>
+    <h2 id="statsMonthTitle">נתונים לחודש הנוכחי</h2>
+    <p>סיכום קצר של פעילות האפליקציה והווצאפ החודש</p>
   </div>
-  <div class="stats-soft-charts">
-    <div class="stats-soft-chart">
-      <div class="soft-donut" id="statsSourceDonut" style="--percent:0%;"><div class="soft-donut-value" id="statsSourcePercent">0%</div></div>
-      <div class="soft-chart-copy"><div class="soft-chart-title">מקור הזמנות</div><div class="soft-chart-sub" id="statsSourceLabel">רוב ההזמנות דרך האפליקציה</div></div>
+
+  <div class="stats-value-grid">
+    <div class="stats-value-card">
+      <span>כניסות</span>
+      <strong id="statsVisits">0</strong>
+      <small>סה״כ כניסות לאפליקציה</small>
     </div>
-    <div class="stats-soft-chart">
-      <div class="soft-donut" id="statsServiceDonut" style="--percent:0%;"><div class="soft-donut-value" id="statsServicePercent">0%</div></div>
-      <div class="soft-chart-copy"><div class="soft-chart-title">שירות מוביל</div><div class="soft-chart-sub" id="statsServiceLabel">השירות הכי מוזמן</div></div>
+    <div class="stats-value-card">
+      <span>תורים</span>
+      <strong id="statsAppointmentsTotal">0</strong>
+      <small>כל התורים שנקבעו החודש</small>
+    </div>
+    <div class="stats-value-card">
+      <span>לקוחות</span>
+      <strong id="statsCustomersTotal">0</strong>
+      <small>לקוחות פעילים במערכת</small>
+    </div>
+    <div class="stats-value-card">
+      <span>חדשים</span>
+      <strong id="statsNewCustomers">0</strong>
+      <small>לקוחות חדשים החודש</small>
     </div>
   </div>
-  <div class="stats-soft-note" id="statsInsight">כאן יוצג סיכום קצר וברור על מצב העסק לפי הנתונים.</div>
+
+  <div class="stats-report-section">
+    <div class="stats-section-head">
+      <h3>מאיפה הגיעו התורים?</h3>
+      <span>חלוקה פשוטה בין האפליקציה לווצאפ</span>
+    </div>
+    <div class="stats-source-bars">
+      <div class="stats-source-row">
+        <div class="stats-source-meta"><strong>אפליקציה</strong><span id="statsAppAppointments">0</span></div>
+        <div class="stats-track"><div class="stats-fill" id="statsAppFill" style="width:0%"></div></div>
+      </div>
+      <div class="stats-source-row">
+        <div class="stats-source-meta"><strong>ווצאפ</strong><span id="statsWhatsAppAppointments">0</span></div>
+        <div class="stats-track"><div class="stats-fill alt" id="statsWhatsAppFill" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-report-section">
+    <div class="stats-section-head">
+      <h3>השפעה על העסק</h3>
+      <span>הנתונים שמראים את הערך של השירות</span>
+    </div>
+    <div class="stats-impact-grid">
+      <div class="stats-impact-card">
+        <span>יחס המרה</span>
+        <strong id="statsConversion">0%</strong>
+        <small>מתוך הכניסות לאפליקציה</small>
+      </div>
+      <div class="stats-impact-card">
+        <span>פעולות אוטומטיות</span>
+        <strong id="statsAutoActions">0</strong>
+        <small>תורים/פניות שטופלו בלי שיחה</small>
+      </div>
+      <div class="stats-impact-card">
+        <span>רשימת המתנה</span>
+        <strong id="statsWaitlistSaved">0</strong>
+        <small>תורים שחזרו לפעילות</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-report-note" id="statsImpactNote">כאן יוצג סיכום קצר וברור על התרומה של המערכת החודש.</div>
 </div>
 
           </div>
@@ -2181,8 +2417,7 @@ body.business-frozen{overflow:hidden;}
       return waitlistEntries
         .filter(entry =>
           entry.date === dateKey &&
-          String(entry.status || 'ממתין') === 'ממתין' &&
-          !findAppointmentByPhoneAndDate(entry.phone, dateKey)
+          String(entry.status || 'ממתין') === 'ממתין'
         )
         .sort((a,b) => (a.createdAtMs || 0) - (b.createdAtMs || 0));
     }
@@ -2198,8 +2433,7 @@ body.business-frozen{overflow:hidden;}
           .map(doc => normalizeWaitlistRecord(doc.data() || {}, doc.id))
           .filter(entry =>
             entry.date === dateKey &&
-            String(entry.status || 'ממתין') === 'ממתין' &&
-            !findAppointmentByPhoneAndDate(entry.phone, dateKey)
+            String(entry.status || 'ממתין') === 'ממתין'
           )
           .sort((a,b) => (a.createdAtMs || 0) - (b.createdAtMs || 0));
       }catch(err){
@@ -2307,30 +2541,35 @@ body.business-frozen{overflow:hidden;}
 
     async function notifyWaitlistForSlot(dateKey, time, options = {}){
       const source = options.source || 'owner';
-      let waiting = getWaitingEntriesForDate(dateKey);
 
-      // חשוב: אחרי ביטול תור אצל לקוח, הרשימה המקומית יכולה להיות ריקה/לא מסונכרנת עדיין.
-      // לכן קוראים את רשימת ההמתנה ישירות מ-Firestore לפני השליחה לשרת.
-      if(!waiting.length){
-        waiting = await fetchWaitingEntriesForDate(dateKey);
-      }
+      // קוראים ישירות מ-Firestore כדי לא להיתקע על מצב מקומי ישן אחרי ביטול תור.
+      let waiting = await fetchWaitingEntriesForDate(dateKey);
+      if(!waiting.length) waiting = getWaitingEntriesForDate(dateKey);
 
       if(!waiting.length){
         if(source === 'owner') showToast('אין לקוחות ברשימת המתנה ליום הזה.');
-        return;
+        return false;
       }
 
       const offerToken = createClaimToken();
       const offered = waiting.map(entry => ({ ...entry, offerToken }));
-      await Promise.all(waiting.map(entry => updateWaitlistEntry(entry.id, { offeredTime: time, offerToken, notifiedAtMs: Date.now() }).catch(console.error)));
-      const sentAutomatically = await sendWaitlistAutoWhatsapp(offered, dateKey, time, { quiet: source !== 'owner' });
+      await Promise.all(waiting.map(entry =>
+        updateWaitlistEntry(entry.id, {
+          offeredTime: time,
+          offerToken,
+          notifiedAtMs: Date.now()
+        }).catch(console.error)
+      ));
+
+      const sentAutomatically = await sendWaitlistAutoWhatsapp(offered, dateKey, time, { quiet:false });
       if(sentAutomatically){
-        if(source === 'owner') showToast('נשלחה הודעה אוטומטית לרשימת ההמתנה.');
-        return;
+        showToast(`נשלחה הודעה אוטומטית ל־${offered.length} ממתינים.`);
+        return true;
       }
-      if(source === 'owner'){
-        openNotifyWaitlistModal(offered, dateKey, time);
-      }
+
+      // אין פתיחת "שלח לכולם" אוטומטית — אם זה מגיע לכאן, השרת לא שלח בפועל.
+      showToast('השליחה האוטומטית לא הצליחה. בדוק שהשרת של הווצאפ פעיל ומוגדר.', true);
+      return false;
     }
     function openNotifyWaitlistModal(entries, dateKey, time){
       const dateText = dateKey === formatDateKey(new Date()) ? 'היום' : formatDatePrettyFromKey(dateKey);
@@ -2479,18 +2718,32 @@ body.business-frozen{overflow:hidden;}
           return false;
         }
 
-        // בדיקת השעה שהתפנתה בלבד. לא בודקים כאן "תור עתידי" לפי מספר טלפון,
-        // כי זה חוסם בטעות לקוח מרשימת המתנה מלקבל תור שהתפנה.
-        const slotTakenBeforeTx = await isSlotTakenInFirebase(dateKey, time);
-        if(slotTakenBeforeTx){
-          showToast('מישהו כבר תפס את התור הזה.', true);
-          return false;
-        }
-
         const waitRef = db.collection(WAITLIST_COLLECTION).doc(entry.id);
         const lockId = `${currentBusinessSettings.businessId}_${dateKey}_${time}`.replace(/[^a-zA-Z0-9_-]/g,'_');
         const lockRef = db.collection(WAITLIST_CLAIMS_COLLECTION).doc(lockId);
         const apptRef = db.collection(APPOINTMENTS_COLLECTION).doc(`waitlist_${entry.id}_${dateKey}_${time}`.replace(/[^a-zA-Z0-9_-]/g,'_'));
+
+        // בדיקת השעה שהתפנתה בלבד.
+        // אם זה אותו לקוח שחזר מהקישור אחרי שהתור כבר נוצר — מציגים הצלחה במקום שגיאה.
+        const slotTakenBeforeTx = await isSlotTakenInFirebase(dateKey, time);
+        if(slotTakenBeforeTx){
+          const existingApptDoc = await apptRef.get();
+          if(existingApptDoc.exists){
+            const existingAppt = normalizeAppointmentRecord(existingApptDoc.data(), existingApptDoc.id);
+            if(isActiveAppointment(existingAppt)){
+              if(!appointments.some(item => item.id === existingAppt.id)) appointments.push(existingAppt);
+              syncBusyMapFromAppointments();
+              rerenderAll();
+              openSuccessModal(formatDatePrettyFromKey(dateKey), time, existingAppt.service || service || 'התור נקבע מרשימת ההמתנה');
+              clearWaitlistClaimParams();
+              return true;
+            }
+          }
+
+          showToast('מישהו כבר תפס את התור הזה.', true);
+          clearWaitlistClaimParams();
+          return false;
+        }
 
         await db.runTransaction(async (tx) => {
           const [freshWaitDoc, lockDoc, existingApptDoc] = await Promise.all([
@@ -2511,14 +2764,14 @@ body.business-frozen{overflow:hidden;}
 
           if(lockDoc.exists){
             const lockData = lockDoc.data() || {};
-            if(lockData.waitlistId === entry.id){
-              return;
+
+            // אם זו נעילה של אותו לקוח אבל אין עדיין מסמך תור,
+            // ממשיכים ויוצרים את התור. קודם היה כאן return וזה השאיר אותו בהמתנה.
+            if(lockData.waitlistId !== entry.id){
+              // אם נשארה נעילה ישנה על השעה אבל אין תור פעיל בפועל,
+              // לא חוסמים את הלקוח מרשימת ההמתנה.
+              tx.delete(lockRef);
             }
-            // אם נשארה נעילה ישנה על השעה אבל אין תור פעיל בפועל,
-            // לא חוסמים את הלקוח מרשימת ההמתנה.
-            // זה קורה כשבעל העסק ביטל תור והשעה חזרה להיות פנויה,
-            // אבל מסמך הנעילה הישן נשאר ב-Firebase.
-            tx.delete(lockRef);
           }
 
           if(String(freshEntry.status || 'ממתין') !== 'ממתין') throw new Error('INVALID_WAITLIST');
@@ -2558,19 +2811,16 @@ body.business-frozen{overflow:hidden;}
           });
         });
 
-        if(phone && !appointments.some(item => normalizePhone(item.phone) === normalizePhone(phone) && item.date === dateKey && item.time === time && isActiveAppointment(item))){
-          appointments.push({
-            id: apptRef.id,
-            businessId: currentBusinessSettings.businessId,
-            name,
-            phone,
-            service,
-            date: dateKey,
-            time,
-            status:'נקבע',
-            source:'רשימת המתנה',
-            notes:''
-          });
+        const createdAppointmentDoc = await apptRef.get();
+
+        if(!createdAppointmentDoc.exists){
+          throw new Error('WAITLIST_APPOINTMENT_NOT_CREATED');
+        }
+
+        const createdAppointment = normalizeAppointmentRecord(createdAppointmentDoc.data(), createdAppointmentDoc.id);
+
+        if(!appointments.some(item => item.id === createdAppointment.id)){
+          appointments.push(createdAppointment);
         }
 
         const waiting = waitlistEntries.find(item => item.id === entry.id);
@@ -2587,6 +2837,8 @@ body.business-frozen{overflow:hidden;}
           showToast('מישהו כבר תפס את התור הזה.', true);
         } else if(err && err.message === 'INVALID_WAITLIST'){
           showToast('הקישור כבר לא פעיל.', true);
+        } else if(err && err.message === 'WAITLIST_APPOINTMENT_NOT_CREATED'){
+          showToast('האישור לא הושלם. נסה שוב מהקישור בוואטסאפ.', true);
         } else {
           showToast('שגיאה באישור התור. נסה לרענן וללחוץ שוב.', true);
         }
@@ -3022,7 +3274,13 @@ body.business-frozen{overflow:hidden;}
       const freedDate = item.date;
       const freedTime = item.time;
       const source = options.source || 'owner';
-      try{ await deleteAppointmentFromFirebase(item.id); if(freedDate && freedTime) setTimeout(() => notifyWaitlistForSlot(freedDate, freedTime, { source }), 250); return true; }
+      try{
+        await deleteAppointmentFromFirebase(item.id);
+        if(freedDate && freedTime){
+          await notifyWaitlistForSlot(freedDate, freedTime, { source });
+        }
+        return true;
+      }
       catch(err){ console.error(err); showToast('שגיאה בביטול התור.', true); return false; }
     }
 
@@ -3135,8 +3393,16 @@ body.business-frozen{overflow:hidden;}
     function renderStats(){
       const activeAppointments = getActiveAppointments().filter(item => !isClosedDateKey(item.date));
       const monthAppointments = activeAppointments.filter(isAppointmentInCurrentMonth);
-      const monthAppointmentsWithService = monthAppointments.filter(item => String(item.service || '').trim());
       const customers = getUniqueCustomers();
+
+      const now = new Date();
+      const monthName = now.toLocaleDateString('he-IL', { month:'long', year:'numeric' });
+      const monthPrefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+      const visitsMap = currentBusinessSettings.visits || {};
+      const monthVisits = Object.entries(visitsMap).reduce((sum, [key, value]) => {
+        return String(key).startsWith(monthPrefix) ? sum + (Number(value) || 0) : sum;
+      }, 0);
 
       let newCustomersThisMonth = 0;
       customers.forEach(customer => {
@@ -3148,57 +3414,45 @@ body.business-frozen{overflow:hidden;}
         if(firstAppointment && isAppointmentInCurrentMonth(firstAppointment)) newCustomersThisMonth += 1;
       });
 
-      const revenue = estimateRevenue(monthAppointments);
-      const statsRevenue = document.getElementById('statsRevenue');
-      const statsUpcoming = document.getElementById('statsUpcoming');
-      const statsCustomers = document.getElementById('statsCustomers');
-      if(statsRevenue) statsRevenue.textContent = `₪${revenue.toLocaleString('he-IL')}`;
-      if(statsUpcoming) statsUpcoming.textContent = monthAppointments.length;
-      if(statsCustomers) statsCustomers.textContent = newCustomersThisMonth;
+      const appAppointments = monthAppointments.filter(item => normalizeSourceLabel(item.source) !== 'וואטסאפ').length;
+      const whatsappAppointments = monthAppointments.filter(item => normalizeSourceLabel(item.source) === 'וואטסאפ').length;
+      const waitlistSaved = monthAppointments.filter(item => item.waitlistId || String(item.source || '').includes('רשימת המתנה')).length;
+      const totalAppointments = monthAppointments.length;
+      const conversion = monthVisits ? Math.round((totalAppointments / monthVisits) * 100) : 0;
+      const autoActions = appAppointments + whatsappAppointments + waitlistSaved;
 
-      const sourceRows = countBy(monthAppointments, item => normalizeSourceLabel(item.source));
-      const topSource = sourceRows[0] || { label:'אין נתונים', value:0 };
-      const sourceTotal = sourceRows.reduce((sum, row) => sum + row.value, 0);
-      const sourcePercent = sourceTotal ? (topSource.value / sourceTotal) * 100 : 0;
-      setSoftDonut('statsSourceDonut', 'statsSourcePercent', sourcePercent);
-      const statsSourceLabel = document.getElementById('statsSourceLabel');
-      if(statsSourceLabel){
-        statsSourceLabel.textContent = sourceTotal
-          ? `${topSource.label} מוביל עם ${topSource.value} מתוך ${sourceTotal} הזמנות החודש`
-          : 'אין עדיין הזמנות החודש';
-      }
+      const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if(el) el.textContent = value;
+      };
+      const setWidth = (id, percent) => {
+        const el = document.getElementById(id);
+        if(el) el.style.width = `${Math.max(0, Math.min(100, Math.round(percent || 0)))}%`;
+      };
 
-      const serviceRows = countBy(monthAppointmentsWithService, item => item.service || 'לא נבחר');
-      const topService = serviceRows[0] || { label:'אין נתונים', value:0 };
-      const serviceTotal = serviceRows.reduce((sum, row) => sum + row.value, 0);
-      const servicePercent = serviceTotal ? (topService.value / serviceTotal) * 100 : 0;
-      setSoftDonut('statsServiceDonut', 'statsServicePercent', servicePercent);
-      const statsServiceLabel = document.getElementById('statsServiceLabel');
-      if(statsServiceLabel){
-        statsServiceLabel.textContent = serviceTotal
-          ? `${topService.label} הוזמן ${topService.value} מתוך ${serviceTotal} פעמים החודש`
-          : 'אין עדיין שירותים מוזמנים החודש';
-      }
+      setText('statsMonthTitle', `נתונים לחודש ${monthName}`);
+      setText('statsVisits', monthVisits.toLocaleString('he-IL'));
+      setText('statsAppointmentsTotal', totalAppointments.toLocaleString('he-IL'));
+      setText('statsCustomersTotal', customers.length.toLocaleString('he-IL'));
+      setText('statsNewCustomers', newCustomersThisMonth.toLocaleString('he-IL'));
+      setText('statsAppAppointments', appAppointments.toLocaleString('he-IL'));
+      setText('statsWhatsAppAppointments', whatsappAppointments.toLocaleString('he-IL'));
+      setText('statsConversion', `${conversion}%`);
+      setText('statsAutoActions', autoActions.toLocaleString('he-IL'));
+      setText('statsWaitlistSaved', waitlistSaved.toLocaleString('he-IL'));
 
-      const returningThisMonth = monthAppointments.filter(item => {
-        const phone = normalizePhone(item.phone);
-        if(!phone) return false;
-        return activeAppointments.some(other => normalizePhone(other.phone) === phone && `${other.date || ''} ${other.time || ''}` < `${item.date || ''} ${item.time || ''}`);
-      }).length;
-      const cancelledThisMonth = appointments.filter(item => (item.status === 'cancelled' || item.status === 'בוטל') && isAppointmentInCurrentMonth(item)).length;
-      const statsInsight = document.getElementById('statsInsight');
-      if(statsInsight){
-        if(!monthAppointments.length){
-          statsInsight.textContent = 'אין עדיין נתונים לחודש הנוכחי. ברגע שייקבעו תורים, המספרים יתעדכנו אוטומטית.';
+      const sourceTotal = Math.max(1, appAppointments + whatsappAppointments);
+      setWidth('statsAppFill', (appAppointments / sourceTotal) * 100);
+      setWidth('statsWhatsAppFill', (whatsappAppointments / sourceTotal) * 100);
+
+      const note = document.getElementById('statsImpactNote');
+      if(note){
+        if(!totalAppointments && !monthVisits){
+          note.textContent = 'אין עדיין מספיק נתונים לחודש הנוכחי. ברגע שיהיו כניסות ותורים, הדוח יתעדכן אוטומטית.';
         } else {
-          statsInsight.textContent = `החודש נקבעו ${monthAppointments.length} תורים, מתוכם ${returningThisMonth} של לקוחות חוזרים. בוטלו ${cancelledThisMonth} תורים.`;
+          note.textContent = `החודש נכנסו ${monthVisits.toLocaleString('he-IL')} פעמים לאפליקציה ונקבעו ${totalAppointments.toLocaleString('he-IL')} תורים. ${autoActions.toLocaleString('he-IL')} פעולות טופלו דרך המערכת בלי צורך בשיחה ידנית.`;
         }
       }
-
-      renderPie('sourcePie', 'sourceLegend', sourceRows.slice(0, 6));
-      renderPie('servicePie', 'serviceLegend', serviceRows.slice(0, 6));
-      renderBusyHours(monthAppointments);
-      renderVipCustomers(customers);
     }
 
     function rerenderAll(){ renderDays(); renderSlots(); renderOwnerAppointments(); renderOwnerWaitlist(); renderOwnerCustomers(); renderStats(); updateBookButtonState(); }
