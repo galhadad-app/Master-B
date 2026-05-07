@@ -212,22 +212,16 @@ async function handleIncomingText(from, rawText, metadata = {}) {
   const session = await getSession(from);
   const incomingPhoneNumberId = String(metadata?.phone_number_id || getWhatsappContext()?.incomingPhoneNumberId || "");
 
-  if (!session?.businessId && incomingPhoneNumberId) {
-    const inferredBusiness = await getBusinessByPhoneNumberId(incomingPhoneNumberId);
-    if (inferredBusiness?.businessId) {
-      setWhatsappBusinessContext(inferredBusiness);
-      await saveSession(from, {
-        step: "main_menu",
-        businessId: inferredBusiness.businessId,
-        businessName: inferredBusiness.businessName || inferredBusiness.name || "העסק",
-        incomingPhoneNumberId,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-      await sendMainMenu(from, inferredBusiness);
-      return;
-    }
-  }
+  console.log("📩 Incoming WhatsApp message", {
+    from,
+    text,
+    incomingPhoneNumberId,
+    hasSession: Boolean(session),
+    sessionBusinessId: session?.businessId || "",
+  });
 
+  // Important: first allow start_<businessId> to create/link a session.
+  // Only after that, if no session exists, reply with simple instructions.
   const startBusinessId = extractStartBusinessId(text);
   if (startBusinessId) {
     const business = await getBusinessSettings(startBusinessId);
@@ -274,7 +268,7 @@ async function handleIncomingText(from, rawText, metadata = {}) {
   if (!session?.businessId) {
     await sendWhatsAppMessage(
       from,
-      "כדי להתחיל קביעת תור, צריך ללחוץ על קישור הוואטסאפ של העסק."
+      "הבוט עובד ✅\nכדי להתחיל קביעת תור שלח: start_sason"
     );
     return;
   }
@@ -891,27 +885,48 @@ async function sendWhatsAppMessage(to, body, options = {}) {
   const recipient = toWhatsAppRecipient(to);
   if (!recipient) throw new Error("invalid_whatsapp_recipient");
 
-  const url = `https://graph.facebook.com/v20.0/${config.phoneNumberId}/messages`;
+  const url = `https://graph.facebook.com/v25.0/${config.phoneNumberId}/messages`;
 
-  const response = await axios.post(
-    url,
-    {
-      messaging_product: "whatsapp",
-      recipient_type: "individual",
+  console.log("➡️ Sending WhatsApp text", {
+    to: recipient,
+    mode: config.mode,
+    businessId: config.businessId || "",
+    phoneNumberId: config.phoneNumberId,
+    hasToken: Boolean(config.token),
+    preview: String(body || "").slice(0, 120),
+  });
+
+  let response;
+  try {
+    response = await axios.post(
+      url,
+      {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: recipient,
+        type: "text",
+        text: {
+          preview_url: true,
+          body: String(body || ""),
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${config.token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (err) {
+    console.error("❌ WhatsApp send failed", {
       to: recipient,
-      type: "text",
-      text: {
-        preview_url: true,
-        body: String(body || ""),
-      },
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
+      mode: config.mode,
+      businessId: config.businessId || "",
+      phoneNumberId: config.phoneNumberId,
+      error: getErrorPayload(err),
+    });
+    throw err;
+  }
 
   console.log("✅ WhatsApp text sent", {
     to: recipient,
@@ -963,13 +978,19 @@ function resolveWhatsAppConfig(business, options = {}) {
       ""
   ).trim();
 
-  const usePrivate = ["private", "business", "own", "dedicated", "מספר-עסק"].includes(mode) && privatePhoneNumberId;
+  // Use a private/dedicated number only when BOTH private phoneNumberId and private token exist.
+  // Otherwise always fall back to the central WhatsApp number configured in Cloud Run.
+  const usePrivate = ["private", "business", "own", "dedicated", "מספר-עסק"].includes(mode) && privatePhoneNumberId && privateToken;
 
   return {
     mode: usePrivate ? "private" : "central",
     businessId: activeBusiness?.businessId || activeBusiness?.id || store.businessId || "",
-    phoneNumberId: usePrivate ? privatePhoneNumberId : String(options.centralPhoneNumberId || PHONE_NUMBER_ID || store.incomingPhoneNumberId || "").trim(),
-    token: usePrivate ? (privateToken || WHATSAPP_TOKEN) : String(options.centralToken || WHATSAPP_TOKEN || "").trim(),
+    phoneNumberId: usePrivate
+      ? privatePhoneNumberId
+      : String(options.centralPhoneNumberId || PHONE_NUMBER_ID || store.incomingPhoneNumberId || "").trim(),
+    token: usePrivate
+      ? privateToken
+      : String(options.centralToken || WHATSAPP_TOKEN || "").trim(),
   };
 }
 
