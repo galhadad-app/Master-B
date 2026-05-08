@@ -166,7 +166,7 @@ app.post("/waitlist/notify", async (req, res) => {
 
     for (const entry of waiting) {
       try {
-        const phone = toWhatsAppRecipient(entry.phone);
+        const phone = toWhatsAppRecipient(normalizePhone(entry.phone));
         if (!phone) throw new Error("invalid_phone");
 
         const waitlistId = entry.id || entry.waitlistId || "";
@@ -504,7 +504,7 @@ async function handleAskName(from, text, business, session) {
     businessId: business.businessId,
     businessName: business.businessName || business.name || "",
     name,
-    phone: whatsappToIsraeliPhone(from),
+    phone: normalizePhone(from),
     service: session.selectedService || "",
     date: session.selectedDate,
     time: session.selectedTime,
@@ -606,7 +606,7 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
 
     for (const entry of waiting) {
       try {
-        const phone = toWhatsAppRecipient(entry.phone);
+        const phone = toWhatsAppRecipient(normalizePhone(entry.phone));
         if (!phone) throw new Error("invalid_phone");
 
         const claimToken = entry.claimToken || createClaimToken();
@@ -632,7 +632,7 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
           claimUrl,
         });
 
-        await sendWhatsAppMessage(phone, message);
+        await sendWhatsAppMessage(phone, message, { business });
         sent += 1;
       } catch (err) {
         failed += 1;
@@ -680,7 +680,7 @@ function normalizeWaitlistEntry(entry) {
     name: fullName,
     firstName: String(entry.firstName || "").trim(),
     lastName: String(entry.lastName || "").trim(),
-    phone: String(entry.phone || "").trim(),
+    phone: normalizePhone(entry.phone),
     service: String(entry.service || "").trim(),
     status: String(entry.status || "ממתין").trim(),
     claimToken: String(entry.claimToken || "").trim(),
@@ -1100,15 +1100,25 @@ function cleanText(text) {
 }
 
 function normalizePhone(phone) {
-  return String(phone || "").replace(/\D/g, "");
+  let digits = String(phone || "").replace(/\D/g, "");
+
+  // Fix common Israeli mobile formats for WhatsApp Cloud API:
+  // 0523971954  -> 972523971954
+  // 523971954   -> 972523971954
+  // 972523971954 stays as-is
+  // 9720523971954 -> 972523971954
+  if (!digits) return "";
+  if (digits.startsWith("9720")) return `972${digits.slice(4)}`;
+  if (digits.startsWith("972")) return digits;
+  if (digits.startsWith("0")) return `972${digits.slice(1)}`;
+  if (digits.length === 9 && digits.startsWith("5")) return `972${digits}`;
+  return digits;
 }
 
 function toWhatsAppRecipient(phone) {
   const digits = normalizePhone(phone);
   if (!digits) return "";
-  if (digits.startsWith("972")) return digits;
-  if (digits.startsWith("0")) return `972${digits.slice(1)}`;
-  if (digits.length === 9 && digits.startsWith("5")) return `972${digits}`;
+  if (digits.startsWith("972") && digits.length >= 11) return digits;
   return digits;
 }
 
