@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -2462,8 +2463,8 @@ body.business-frozen{overflow:hidden;}
     function buildOwnerWaitlistWhatsappMessage(entry){ const dateText = entry.date === formatDateKey(new Date()) ? 'היום' : formatDatePrettyFromKey(entry.date); return `שלום ${entry.firstName || entry.name || ''}, אתה נמצא ברשימת ההמתנה לתאריך ${dateText}. נעדכן אותך אם יתפנה תור.`.trim(); }
     function openOwnerWaitlistWhatsapp(entryId){ const entry = waitlistEntries.find(item => item.id === entryId); if(!entry) return showToast('לא נמצא ממתין לשליחה.', true); const href = whatsappLinkFor(entry.phone, buildOwnerWaitlistWhatsappMessage(entry)); const opened = window.open(href, '_blank', 'noopener'); if(!opened) window.location.href = href; }
     async function deleteWaitlistEntry(entryId){ const entry = waitlistEntries.find(item => item.id === entryId); if(!entry) return showToast('לא נמצא ממתין למחיקה.', true); const ok = confirm(`למחוק את ${entry.name || 'הלקוח'} מרשימת ההמתנה?`); if(!ok) return; try{ await db.collection(WAITLIST_COLLECTION).doc(entryId).delete(); showToast('נמחק מרשימת ההמתנה.'); }catch(err){ console.error(err); showToast('שגיאה במחיקת הממתין.', true); } }
-    function whatsappLinkFor(phone, text){ const digits = normalizePhone(phone); const international = digits.startsWith('0') ? `972${digits.slice(1)}` : digits; return `https://wa.me/${international}?text=${encodeURIComponent(text)}`; }
-    async function createWaitlistEntry(payload){ const claimToken = createClaimToken(); await db.collection(WAITLIST_COLLECTION).add({ ...payload, claimToken, status:'ממתין', businessId: currentBusinessSettings.businessId, businessName: currentBusinessSettings.businessName, createdAtMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
+    function whatsappLinkFor(phone, text){ const international = toWhatsappPhone(phone); return `https://wa.me/${international}?text=${encodeURIComponent(text)}`; }
+    async function createWaitlistEntry(payload){ const claimToken = createClaimToken(); const phoneIntl = toWhatsappPhone(payload.phone || ''); const phoneDisplay = toIsraeliDisplayPhone(payload.phone || ''); await db.collection(WAITLIST_COLLECTION).add({ ...payload, phone: phoneIntl, phoneDisplay, claimToken, status:'ממתין', businessId: currentBusinessSettings.businessId, businessName: currentBusinessSettings.businessName, createdAtMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function updateWaitlistEntry(id, updates){ if(!id) return; await db.collection(WAITLIST_COLLECTION).doc(id).update({ ...updates, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function closeMatchingWaitlistEntries(phone, dateKey, bookedTime){
       const normalizedPhone = normalizePhone(phone);
@@ -2485,7 +2486,7 @@ body.business-frozen{overflow:hidden;}
         window.WAITLIST_AUTO_NOTIFY_API_URL ||
         localStorage.getItem('WAITLIST_AUTO_NOTIFY_API_URL') ||
         localStorage.getItem('whatsappWaitlistApiUrl') ||
-        'https://api-jaes6uy2da-uc.a.run.app/waitlist/notify'
+        'https://api-v2-81941134785.us-central1.run.app/waitlist/notify'
       ).trim();
     }
 
@@ -2505,7 +2506,7 @@ body.business-frozen{overflow:hidden;}
           name: entry.name || '',
           firstName: entry.firstName || '',
           lastName: entry.lastName || '',
-          phone: formatDisplayPhone(entry.phone || ''),
+          phone: toWhatsappPhone(entry.phone || ''),
           service: entry.service || '',
           status: entry.status || 'ממתין',
           message: buildWaitlistWhatsappMessage(entry, dateKey, time),
@@ -2641,7 +2642,7 @@ body.business-frozen{overflow:hidden;}
           dateText,
           firstName: existing.firstName || firstName,
           lastName: existing.lastName || lastName,
-          phone: existing.phone || phone,
+          phone: toIsraeliDisplayPhone(existing.phone || phone),
           service: existing.service || service || 'לא נבחר'
         });
       } try{ await createWaitlistEntry({ firstName, lastName, name: `${firstName} ${lastName}`.trim(), phone, service: service || 'לא נבחר', date: dateKey }); const dateText = `${getDayLabel(activeWaitlistDate)} • ${formatDatePretty(activeWaitlistDate)}`; showWaitlistSuccessModal({ dateText, firstName, lastName, phone, service: service || 'לא נבחר' }); }catch(err){ console.error(err); showToast('שגיאה בשמירת רשימת ההמתנה.', true); } }
@@ -3099,6 +3100,23 @@ body.business-frozen{overflow:hidden;}
     }
 
     function normalizePhone(phone){ return String(phone || '').replace(/\D/g, ''); }
+
+    function toWhatsappPhone(phone){
+      const digits = normalizePhone(phone);
+      if(!digits) return '';
+      if(digits.startsWith('9720')) return `972${digits.slice(4)}`;
+      if(digits.startsWith('972')) return digits;
+      if(digits.startsWith('0')) return `972${digits.slice(1)}`;
+      if(digits.length === 9 && digits.startsWith('5')) return `972${digits}`;
+      return digits;
+    }
+
+    function toIsraeliDisplayPhone(phone){
+      const digits = normalizePhone(phone);
+      if(/^9720\d{8}$/.test(digits)) return `0${digits.slice(4)}`;
+      if(/^972\d{9}$/.test(digits)) return `0${digits.slice(3)}`;
+      return digits;
+    }
 
     function getUniqueCustomers(){
       const customerMap = new Map();
