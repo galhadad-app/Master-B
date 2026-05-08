@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ניהול עסקים</title>
+  <!-- WA_3_MODES_FIXED_FINAL_2026_05_08 -->
   <style>
     :root{
       --bg:#06121a;
@@ -337,7 +338,7 @@
         <div class="row">
           <div>
             <label>מצב בוט וואטסאפ</label>
-            <select id="whatsappMode">
+            <select id="whatsappBotMode">
               <option value="off">כבוי</option>
               <option value="central">דרך המספר שלי</option>
               <option value="private">דרך מספר בעל העסק</option>
@@ -352,11 +353,6 @@
         <label>Access Token פרטי לעסק</label>
         <input id="whatsappAccessToken" class="ltr" placeholder="לא חובה בשלב המרכזי — רק אם לעסק יש מספר משלו" />
         <div class="hint">ברוב העסקים תשאיר ריק. אם לעסק יש מספר משלו ב־Meta, שמים כאן Phone Number ID וטוקן מתאים.</div>
-
-        <select id="whatsappEnabled" style="display:none">
-          <option value="false">כבוי</option>
-          <option value="true">פעיל</option>
-        </select>
 
         <div class="row">
           <div><label>גישת בעל עסק</label><select id="ownerAccess"><option value="false">סגורה — רק אני מנהל</option><option value="true">פתוחה — הלקוח יכול לערוך</option></select></div>
@@ -441,8 +437,8 @@
     }
 
     function whatsappBotModeForBusiness(b){
-      const explicit = String(b?.whatsappBotMode || "").toLowerCase();
-      if(explicit === "off" || explicit === "central" || explicit === "private") return explicit;
+      const explicitMode = String(b?.whatsappBotMode || "").toLowerCase();
+      if(explicitMode === "off" || explicitMode === "central" || explicitMode === "private") return explicitMode;
 
       const enabled = boolValue(b?.whatsappEnabled, boolValue(b?.botEnabled, false));
       if(!enabled) return "off";
@@ -454,7 +450,8 @@
       return whatsappBotModeForBusiness(b) !== "off";
     }
     function whatsappModeForBusiness(b){
-      return whatsappBotModeForBusiness(b);
+      const mode = whatsappBotModeForBusiness(b);
+      return mode === "private" ? "private" : "central";
     }
     function whatsappModeLabel(b){
       const mode = whatsappBotModeForBusiness(b);
@@ -488,10 +485,9 @@
       businessName:document.getElementById("businessName"),
       businessId:document.getElementById("businessId"),
       whatsappNumber:document.getElementById("whatsappNumber"),
-      whatsappMode:document.getElementById("whatsappMode"),
+      whatsappBotMode:document.getElementById("whatsappBotMode"),
       whatsappPhoneNumberId:document.getElementById("whatsappPhoneNumberId"),
       whatsappAccessToken:document.getElementById("whatsappAccessToken"),
-      whatsappEnabled:document.getElementById("whatsappEnabled"),
       ownerAccess:document.getElementById("ownerAccess"),
       ownerCode:document.getElementById("ownerCode"),
       saveBtn:document.getElementById("saveBtn"),
@@ -939,10 +935,9 @@
       el.businessId.value="";
       el.businessId.disabled=false;
       el.whatsappNumber.value="";
-      el.whatsappMode.value="off";
+      el.whatsappBotMode.value="off";
       el.whatsappPhoneNumberId.value="";
       el.whatsappAccessToken.value="";
-      el.whatsappEnabled.value="false";
       el.ownerAccess.value="false";
       el.ownerCode.value="1234";
       el.saveStatus.textContent="";
@@ -958,30 +953,23 @@
       el.businessId.value=id;
       el.businessId.disabled=true;
       el.whatsappNumber.value=cleanPhone(b.whatsappNumber||b.phone||"");
-      el.whatsappMode.value=whatsappModeForBusiness(b);
+      el.whatsappBotMode.value=whatsappBotModeForBusiness(b);
       el.whatsappPhoneNumberId.value=String(b.whatsappPhoneNumberId||b.phoneNumberId||b.waPhoneNumberId||"");
       el.whatsappAccessToken.value=String(b.whatsappAccessToken||b.accessToken||b.waAccessToken||"");
-      el.whatsappEnabled.value=whatsappEnabledForBusiness(b) ? "true" : "false";
       el.ownerAccess.value=ownerAccessForBusiness(b) ? "true" : "false";
       el.ownerCode.value=digits(b.ownerCode||"1234").slice(0,4);
       showScreen("form");
     }
 
-
-    function syncWhatsappEnabledFromMode(){
-      if(!el.whatsappMode || !el.whatsappEnabled) return;
-      el.whatsappEnabled.value = el.whatsappMode.value === "off" ? "false" : "true";
-    }
     async function saveBusiness(){
       const businessName=el.businessName.value.trim();
       const businessId=cleanId(el.businessId.value);
       const whatsappNumber=cleanPhone(el.whatsappNumber.value);
-      const whatsappBotMode=["off","central","private"].includes(el.whatsappMode.value) ? el.whatsappMode.value : "off";
+      const whatsappBotMode=el.whatsappBotMode.value;
+      const whatsappEnabled=whatsappBotMode !== "off";
       const whatsappMode=whatsappBotMode === "private" ? "private" : "central";
       const whatsappPhoneNumberId=String(el.whatsappPhoneNumberId.value||"").trim();
       const whatsappAccessToken=String(el.whatsappAccessToken.value||"").trim();
-      const whatsappEnabled=whatsappBotMode !== "off";
-      el.whatsappEnabled.value=whatsappEnabled ? "true" : "false";
       const ownerAccess=el.ownerAccess.value === "true";
       const ownerCode=digits(el.ownerCode.value).slice(0,4)||"1234";
 
@@ -992,7 +980,7 @@
       if(!businessName){showToast("חסר שם עסק",true);return}
       if(!businessId){showToast("חסר businessId תקין",true);return}
       if(!validPhone(whatsappNumber)){showToast("מספר וואטסאפ חייב להתחיל ב־972 ולהיות 12 ספרות",true);return}
-      if(whatsappBotMode === "private" && !whatsappPhoneNumberId){showToast("במצב מספר בעל העסק חייבים למלא Phone Number ID",true);return}
+      if(whatsappBotMode === "private" && !whatsappPhoneNumberId){showToast("במצב דרך מספר בעל העסק חייבים למלא Phone Number ID",true);return}
 
       el.saveBtn.disabled=true;
       el.saveStatus.textContent="שומר ל־businessSettings...";
@@ -1083,26 +1071,8 @@
     }
 
     async function toggleWhatsappFeature(id){
-      const b=businesses.find(x=>x.id===id);
-      if(!b) return;
-      const next=!whatsappEnabledForBusiness(b);
-      const msg=next
-        ? "להפעיל בוט וואטסאפ לעסק הזה?"
-        : "לכבות את בוט הוואטסאפ לעסק הזה? האפליקציה עצמה תמשיך לעבוד.";
-      if(!confirm(msg)) return;
-      try{
-        await db.collection(COLLECTION).doc(id).set({
-          whatsappEnabled:next,
-          botEnabled:next,
-          plan:next ? "whatsapp" : "basic",
-          updatedAtMs:Date.now(),
-          updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-        },{merge:true});
-        showToast(next ? "בוט הוואטסאפ הופעל" : "בוט הוואטסאפ כובה");
-      }catch(err){
-        console.error(err);
-        showToast("עדכון וואטסאפ נכשל",true);
-      }
+      fillForm(id);
+      showToast("בחר מצב בוט וואטסאפ ושמור עסק");
     }
 
     async function toggleOwnerAccess(id){
@@ -1159,9 +1129,9 @@
           <div class="business-top">
             <div>
               <div class="business-title">${html(name)}</div>
-              <div class="meta">ID: ${html(id)}<br>וואטסאפ: ${html(phone||"-")}<br>מצב וואטסאפ: ${html(whatsappModeLabel(b))}<br>Phone Number ID: ${html(b.whatsappPhoneNumberId||b.phoneNumberId||"-")}<br>בוט וואטסאפ: ${whatsappOn ? "פעיל" : "כבוי"}<br>גישת בעל עסק: ${ownerOpen ? "פתוחה" : "סגורה"}<br>קוד בעל עסק: ${html(b.ownerCode||"-")}<br>תאריך פתיחה: ${html(businessCreatedDate(b))}</div>
+              <div class="meta">ID: ${html(id)}<br>וואטסאפ: ${html(phone||"-")}<br>מצב בוט וואטסאפ: ${html(whatsappModeLabel(b))}<br>Phone Number ID: ${html(b.whatsappPhoneNumberId||b.phoneNumberId||"-")}<br>בוט פעיל: ${whatsappOn ? "כן" : "לא"}<br>גישת בעל עסק: ${ownerOpen ? "פתוחה" : "סגורה"}<br>קוד בעל עסק: ${html(b.ownerCode||"-")}<br>תאריך פתיחה: ${html(businessCreatedDate(b))}</div>
             </div>
-            <div class="business-badges"><span class="badge ${badgeClass}">${whatsappOn ? "בוט: "+whatsappModeLabel(b) : "אפליקציה בלבד"}</span><span class="badge ${ownerOpen ? "pro" : ""}">${ownerOpen ? "גישה פתוחה" : "שליטה אצלך"}</span>${isBusinessFrozen(b) ? `<span class="badge frozen">מוקפא</span>` : ``}</div>
+            <div class="business-badges"><span class="badge ${badgeClass}">בוט: ${html(whatsappModeLabel(b))}</span><span class="badge ${ownerOpen ? "pro" : ""}">${ownerOpen ? "גישה פתוחה" : "שליטה אצלך"}</span>${isBusinessFrozen(b) ? `<span class="badge frozen">מוקפא</span>` : ``}</div>
           </div>
           ${renderStatsHtml(id)}
           <div class="link-label">קישור לאפליקציה</div>
@@ -1172,7 +1142,7 @@
             <button class="btn ghost small" onclick="fillForm('${js(id)}')">ערוך</button>
             <button class="btn ghost small" onclick="window.open('${js(app)}','_blank')">פתח אפליקציה</button>
             <button class="btn ghost small" onclick="openReports('${js(id)}')">דוחות</button>
-            <button class="btn ${whatsappOn ? "unfreeze" : "freeze"} small" onclick="toggleWhatsappFeature('${js(id)}')">${whatsappOn ? "כבה בוט" : "הפעל בוט"}</button>
+            <button class="btn ghost small" onclick="toggleWhatsappFeature('${js(id)}')">שנה מצב בוט</button>
             <button class="btn ${ownerOpen ? "unfreeze" : "freeze"} small" onclick="toggleOwnerAccess('${js(id)}')">${ownerOpen ? "סגור גישה" : "פתח גישה"}</button>
             <button class="btn ${isBusinessFrozen(b) ? "unfreeze" : "freeze"} small" onclick="toggleBusinessFreeze('${js(id)}')">${isBusinessFrozen(b) ? "הפעל עסק" : "הקפא עסק"}</button>
             <button class="btn danger small" onclick="deleteBusiness('${js(id)}')">מחק</button>
@@ -1234,7 +1204,6 @@
     el.whatsappNumber.addEventListener("input",()=>el.whatsappNumber.value=cleanPhone(el.whatsappNumber.value));
     el.ownerCode.addEventListener("input",()=>el.ownerCode.value=digits(el.ownerCode.value).slice(0,4));
     el.saveBtn.addEventListener("click",saveBusiness);
-    el.whatsappMode.addEventListener("change",syncWhatsappEnabledFromMode);
     el.resetBtn.addEventListener("click",resetForm);
     el.refreshBtn.addEventListener("click",subscribe);
     el.searchInput.addEventListener("input",render);
