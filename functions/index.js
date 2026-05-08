@@ -211,6 +211,25 @@ app.post("/waitlist/notify", async (req, res) => {
 });
 
 // =======================
+// WhatsApp bot availability
+// =======================
+function isWhatsappBotDisabled(business) {
+  if (!business) return false;
+
+  const values = [
+    business.whatsappEnabled,
+    business.whatsappBotEnabled,
+    business.botEnabled,
+  ];
+
+  return values.some((value) => {
+    if (value === false) return true;
+    if (typeof value === "string" && value.trim().toLowerCase() === "false") return true;
+    return false;
+  });
+}
+
+// =======================
 // Main conversation logic
 // =======================
 async function handleIncomingText(from, rawText, metadata = {}) {
@@ -234,6 +253,12 @@ async function handleIncomingText(from, rawText, metadata = {}) {
     if (!business) {
       await clearSession(from);
       await sendWhatsAppMessage(from, "לא מצאתי את העסק הזה במערכת 🙏");
+      return;
+    }
+
+    if (isWhatsappBotDisabled(business)) {
+      await clearSession(from);
+      console.log("⏸️ WhatsApp bot disabled for business", { businessId: startBusinessId, from });
       return;
     }
 
@@ -266,6 +291,12 @@ async function handleIncomingText(from, rawText, metadata = {}) {
       return;
     }
 
+    if (isWhatsappBotDisabled(business)) {
+      await clearSession(from);
+      console.log("⏸️ WhatsApp bot disabled for business", { businessId: session.businessId, from });
+      return;
+    }
+
     await saveSession(from, { step: "main_menu" });
     await sendMainMenu(from, business);
     return;
@@ -283,6 +314,12 @@ async function handleIncomingText(from, rawText, metadata = {}) {
   if (!business) {
     await clearSession(from);
     await sendWhatsAppMessage(from, "העסק לא נמצא במערכת 🙏");
+    return;
+  }
+
+  if (isWhatsappBotDisabled(business)) {
+    await clearSession(from);
+    console.log("⏸️ WhatsApp bot disabled for business", { businessId: session.businessId, from });
     return;
   }
 
