@@ -16,7 +16,7 @@ const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "gal_verify_token";
 const APP_BASE_URL = process.env.APP_BASE_URL || "https://galhadad-app.github.io/Master-B/";
-const DEFAULT_WHATSAPP_MODE = process.env.DEFAULT_WHATSAPP_MODE || "off";
+const DEFAULT_WHATSAPP_MODE = process.env.DEFAULT_WHATSAPP_MODE || "central";
 
 if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
   console.error("❌ חסר WHATSAPP_TOKEN או PHONE_NUMBER_ID");
@@ -220,19 +220,17 @@ app.post("/waitlist/notify", async (req, res) => {
   }
 });
 
-
 function getWhatsappBotMode(business) {
-  const mode = String(
-    business?.whatsappBotMode ||
-    business?.whatsappMode ||
-    "off"
-  ).trim().toLowerCase();
+  const explicitMode = String(business?.whatsappBotMode || "").trim().toLowerCase();
+  if (["off", "central", "private"].includes(explicitMode)) return explicitMode;
 
-  if (["central", "private", "off"].includes(mode)) {
-    return mode;
-  }
+  const legacyEnabled = business?.whatsappEnabled ?? business?.whatsappBotEnabled ?? business?.botEnabled ?? business?.waBotEnabled;
+  if (legacyEnabled === false || legacyEnabled === 0) return "off";
+  const legacyEnabledText = String(legacyEnabled ?? "").trim().toLowerCase();
+  if (["false", "0", "off", "כבוי", "disabled", "no"].includes(legacyEnabledText)) return "off";
 
-  return "off";
+  const legacyMode = String(business?.whatsappMode || business?.waMode || DEFAULT_WHATSAPP_MODE || "central").trim().toLowerCase();
+  return legacyMode === "private" ? "private" : "central";
 }
 
 function isWhatsappBotDisabled(business) {
@@ -1063,25 +1061,6 @@ function extractMessageText(message) {
 // =======================
 // Helpers
 // =======================
-
-function isWhatsappBotExplicitlyFalse(value) {
-  if (value === false || value === 0) return true;
-  const normalized = String(value ?? "").trim().toLowerCase();
-  return ["false", "0", "off", "כבוי", "disabled", "no"].includes(normalized);
-}
-
-function isWhatsappBotDisabled(business) {
-  if (!business) return false;
-
-  const fields = [
-    business.whatsappEnabled,
-    business.whatsappBotEnabled,
-    business.botEnabled,
-    business.waBotEnabled
-  ];
-
-  return fields.some(isWhatsappBotExplicitlyFalse);
-}
 
 function extractStartBusinessId(text) {
   const match = String(text || "").trim().match(/^start[_\s-]+([a-z0-9_-]+)$/i);
