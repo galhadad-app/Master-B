@@ -2482,12 +2482,24 @@ body.business-frozen{overflow:hidden;}
     }
     function subscribeWaitlistRealtime(){ if(waitlistUnsubscribe) waitlistUnsubscribe(); waitlistUnsubscribe = db.collection(WAITLIST_COLLECTION).where('businessId', '==', currentBusinessSettings.businessId).onSnapshot(snapshot => { waitlistEntries.length = 0; snapshot.forEach(doc => waitlistEntries.push(normalizeWaitlistRecord(doc.data(), doc.id))); renderOwnerWaitlist(); renderDays(); renderSlots(); }, err => { console.error(err); showToast('שגיאה בטעינת רשימת ההמתנה.', true); }); }
     function getWaitlistAutoNotifyApiUrl(){
-      return String(
+      const DEFAULT_WAITLIST_NOTIFY_API_URL = 'https://api-81941134785.us-central1.run.app/waitlist/notify';
+      const savedUrl = String(
         window.WAITLIST_AUTO_NOTIFY_API_URL ||
         localStorage.getItem('WAITLIST_AUTO_NOTIFY_API_URL') ||
         localStorage.getItem('whatsappWaitlistApiUrl') ||
-        'https://api-v2-81941134785.us-central1.run.app/waitlist/notify'
+        ''
       ).trim();
+
+      // אם נשמר בדפדפן קישור ישן ל-api-v2, מתעלמים ממנו כדי שההתראות יעברו לשרת הפעיל.
+      if(!savedUrl || savedUrl.includes('api-v2-81941134785')){
+        try{
+          localStorage.setItem('WAITLIST_AUTO_NOTIFY_API_URL', DEFAULT_WAITLIST_NOTIFY_API_URL);
+          localStorage.setItem('whatsappWaitlistApiUrl', DEFAULT_WAITLIST_NOTIFY_API_URL);
+        }catch(err){ console.warn('Could not persist waitlist notify API URL:', err); }
+        return DEFAULT_WAITLIST_NOTIFY_API_URL;
+      }
+
+      return savedUrl;
     }
 
     async function sendWaitlistAutoWhatsapp(entries, dateKey, time, options = {}){
@@ -3295,6 +3307,7 @@ body.business-frozen{overflow:hidden;}
       try{
         await deleteAppointmentFromFirebase(item.id);
         if(freedDate && freedTime){
+          console.log('Appointment cancelled, notifying waitlist:', { date: freedDate, time: freedTime, source });
           await notifyWaitlistForSlot(freedDate, freedTime, { source });
         }
         return true;
