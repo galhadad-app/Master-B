@@ -336,10 +336,11 @@
 
         <div class="row">
           <div>
-            <label>מצב וואטסאפ</label>
-            <select id="whatsappMode">
-              <option value="central">מרכזי — המספר של המערכת</option>
-              <option value="private">פרטי — המספר של בעל העסק</option>
+            <label>מצב בוט וואטסאפ</label>
+            <select id="whatsappBotMode">
+              <option value="off">כבוי</option>
+              <option value="central">דרך המספר שלי</option>
+              <option value="private">דרך מספר בעל העסק</option>
             </select>
           </div>
           <div>
@@ -353,7 +354,7 @@
         <div class="hint">ברוב העסקים תשאיר ריק. אם לעסק יש מספר משלו ב־Meta, שמים כאן Phone Number ID וטוקן מתאים.</div>
 
         <div class="row">
-          <div><label>בוט וואטסאפ</label><select id="whatsappEnabled"><option value="false">כבוי — אפליקציה בלבד</option><option value="true">פעיל — עם בוט וואטסאפ</option></select></div>
+          
           <div><label>גישת בעל עסק</label><select id="ownerAccess"><option value="false">סגורה — רק אני מנהל</option><option value="true">פתוחה — הלקוח יכול לערוך</option></select></div>
         </div>
 
@@ -435,14 +436,22 @@
       return fallback;
     }
 
-    function whatsappEnabledForBusiness(b){
-      return boolValue(b?.whatsappEnabled, boolValue(b?.botEnabled, false));
+    function whatsappBotModeForBusiness(b){
+      const mode = String(b?.whatsappBotMode || b?.whatsappMode || "off").toLowerCase();
+
+      if(mode === "private") return "private";
+      if(mode === "central") return "central";
+
+      return "off";
     }
-    function whatsappModeForBusiness(b){
-      return String(b?.whatsappMode || b?.waMode || "central").toLowerCase() === "private" ? "private" : "central";
-    }
+
     function whatsappModeLabel(b){
-      return whatsappModeForBusiness(b) === "private" ? "מספר פרטי לעסק" : "מספר מרכזי של המערכת";
+      const mode = whatsappBotModeForBusiness(b);
+
+      if(mode === "private") return "דרך מספר בעל העסק";
+      if(mode === "central") return "דרך המספר שלי";
+
+      return "כבוי";
     }
 
     function ownerAccessForBusiness(b){
@@ -470,7 +479,7 @@
       businessName:document.getElementById("businessName"),
       businessId:document.getElementById("businessId"),
       whatsappNumber:document.getElementById("whatsappNumber"),
-      whatsappMode:document.getElementById("whatsappMode"),
+      whatsappBotMode:document.getElementById("whatsappBotMode"),
       whatsappPhoneNumberId:document.getElementById("whatsappPhoneNumberId"),
       whatsappAccessToken:document.getElementById("whatsappAccessToken"),
       whatsappEnabled:document.getElementById("whatsappEnabled"),
