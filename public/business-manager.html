@@ -337,7 +337,7 @@
         <div class="row">
           <div>
             <label>מצב בוט וואטסאפ</label>
-            <select id="whatsappBotMode">
+            <select id="whatsappMode">
               <option value="off">כבוי</option>
               <option value="central">דרך המספר שלי</option>
               <option value="private">דרך מספר בעל העסק</option>
@@ -352,6 +352,11 @@
         <label>Access Token פרטי לעסק</label>
         <input id="whatsappAccessToken" class="ltr" placeholder="לא חובה בשלב המרכזי — רק אם לעסק יש מספר משלו" />
         <div class="hint">ברוב העסקים תשאיר ריק. אם לעסק יש מספר משלו ב־Meta, שמים כאן Phone Number ID וטוקן מתאים.</div>
+
+        <select id="whatsappEnabled" style="display:none">
+          <option value="false">כבוי</option>
+          <option value="true">פעיל</option>
+        </select>
 
         <div class="row">
           <div><label>גישת בעל עסק</label><select id="ownerAccess"><option value="false">סגורה — רק אני מנהל</option><option value="true">פתוחה — הלקוח יכול לערוך</option></select></div>
@@ -436,8 +441,8 @@
     }
 
     function whatsappBotModeForBusiness(b){
-      const explicitMode = String(b?.whatsappBotMode || "").toLowerCase();
-      if(explicitMode === "off" || explicitMode === "central" || explicitMode === "private") return explicitMode;
+      const explicit = String(b?.whatsappBotMode || "").toLowerCase();
+      if(explicit === "off" || explicit === "central" || explicit === "private") return explicit;
 
       const enabled = boolValue(b?.whatsappEnabled, boolValue(b?.botEnabled, false));
       if(!enabled) return "off";
@@ -445,16 +450,12 @@
       const oldMode = String(b?.whatsappMode || b?.waMode || "central").toLowerCase();
       return oldMode === "private" ? "private" : "central";
     }
-
     function whatsappEnabledForBusiness(b){
       return whatsappBotModeForBusiness(b) !== "off";
     }
-
     function whatsappModeForBusiness(b){
-      const mode = whatsappBotModeForBusiness(b);
-      return mode === "private" ? "private" : "central";
+      return whatsappBotModeForBusiness(b);
     }
-
     function whatsappModeLabel(b){
       const mode = whatsappBotModeForBusiness(b);
       if(mode === "off") return "כבוי";
@@ -487,11 +488,10 @@
       businessName:document.getElementById("businessName"),
       businessId:document.getElementById("businessId"),
       whatsappNumber:document.getElementById("whatsappNumber"),
-      whatsappBotMode:document.getElementById("whatsappBotMode"),
-      whatsappMode:document.getElementById("whatsappBotMode"),
+      whatsappMode:document.getElementById("whatsappMode"),
       whatsappPhoneNumberId:document.getElementById("whatsappPhoneNumberId"),
       whatsappAccessToken:document.getElementById("whatsappAccessToken"),
-      whatsappEnabled:document.getElementById("whatsappBotMode"),
+      whatsappEnabled:document.getElementById("whatsappEnabled"),
       ownerAccess:document.getElementById("ownerAccess"),
       ownerCode:document.getElementById("ownerCode"),
       saveBtn:document.getElementById("saveBtn"),
@@ -939,7 +939,7 @@
       el.businessId.value="";
       el.businessId.disabled=false;
       el.whatsappNumber.value="";
-      el.whatsappMode.value="central";
+      el.whatsappMode.value="off";
       el.whatsappPhoneNumberId.value="";
       el.whatsappAccessToken.value="";
       el.whatsappEnabled.value="false";
@@ -958,7 +958,7 @@
       el.businessId.value=id;
       el.businessId.disabled=true;
       el.whatsappNumber.value=cleanPhone(b.whatsappNumber||b.phone||"");
-      el.whatsappBotMode.value=whatsappBotModeForBusiness(b);
+      el.whatsappMode.value=whatsappModeForBusiness(b);
       el.whatsappPhoneNumberId.value=String(b.whatsappPhoneNumberId||b.phoneNumberId||b.waPhoneNumberId||"");
       el.whatsappAccessToken.value=String(b.whatsappAccessToken||b.accessToken||b.waAccessToken||"");
       el.whatsappEnabled.value=whatsappEnabledForBusiness(b) ? "true" : "false";
@@ -967,14 +967,21 @@
       showScreen("form");
     }
 
+
+    function syncWhatsappEnabledFromMode(){
+      if(!el.whatsappMode || !el.whatsappEnabled) return;
+      el.whatsappEnabled.value = el.whatsappMode.value === "off" ? "false" : "true";
+    }
     async function saveBusiness(){
       const businessName=el.businessName.value.trim();
       const businessId=cleanId(el.businessId.value);
       const whatsappNumber=cleanPhone(el.whatsappNumber.value);
-      const whatsappMode=el.whatsappMode.value === "private" ? "private" : "central";
+      const whatsappBotMode=["off","central","private"].includes(el.whatsappMode.value) ? el.whatsappMode.value : "off";
+      const whatsappMode=whatsappBotMode === "private" ? "private" : "central";
       const whatsappPhoneNumberId=String(el.whatsappPhoneNumberId.value||"").trim();
       const whatsappAccessToken=String(el.whatsappAccessToken.value||"").trim();
-      const whatsappEnabled=el.whatsappEnabled.value === "true";
+      const whatsappEnabled=whatsappBotMode !== "off";
+      el.whatsappEnabled.value=whatsappEnabled ? "true" : "false";
       const ownerAccess=el.ownerAccess.value === "true";
       const ownerCode=digits(el.ownerCode.value).slice(0,4)||"1234";
 
@@ -985,7 +992,7 @@
       if(!businessName){showToast("חסר שם עסק",true);return}
       if(!businessId){showToast("חסר businessId תקין",true);return}
       if(!validPhone(whatsappNumber)){showToast("מספר וואטסאפ חייב להתחיל ב־972 ולהיות 12 ספרות",true);return}
-      if(whatsappEnabled && whatsappMode === "private" && !whatsappPhoneNumberId){showToast("במצב מספר פרטי חייבים למלא Phone Number ID",true);return}
+      if(whatsappBotMode === "private" && !whatsappPhoneNumberId){showToast("במצב מספר בעל העסק חייבים למלא Phone Number ID",true);return}
 
       el.saveBtn.disabled=true;
       el.saveStatus.textContent="שומר ל־businessSettings...";
@@ -1002,6 +1009,7 @@
           name:businessName,
           whatsappNumber,
           phone:whatsappNumber,
+          whatsappBotMode,
           whatsappMode,
           whatsappPhoneNumberId,
           phoneNumberId:whatsappPhoneNumberId,
@@ -1010,7 +1018,7 @@
           botEnabled:whatsappEnabled,
           ownerAccess,
           clientOwnerAccess:ownerAccess,
-          plan:whatsappEnabled ? (whatsappMode === "private" ? "whatsapp-private" : "whatsapp-central") : "basic",
+          plan:whatsappBotMode === "off" ? "basic" : (whatsappBotMode === "private" ? "whatsapp-private" : "whatsapp-central"),
           ownerCode,
           appUrl:appLink(businessId),
           whatsappUrl:waLink(businessId,whatsappNumber),
@@ -1226,6 +1234,7 @@
     el.whatsappNumber.addEventListener("input",()=>el.whatsappNumber.value=cleanPhone(el.whatsappNumber.value));
     el.ownerCode.addEventListener("input",()=>el.ownerCode.value=digits(el.ownerCode.value).slice(0,4));
     el.saveBtn.addEventListener("click",saveBusiness);
+    el.whatsappMode.addEventListener("change",syncWhatsappEnabledFromMode);
     el.resetBtn.addEventListener("click",resetForm);
     el.refreshBtn.addEventListener("click",subscribe);
     el.searchInput.addEventListener("input",render);
