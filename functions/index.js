@@ -55,42 +55,8 @@ const DEFAULT_WORKING_HOURS = {
   saturday: { start: "", end: "", closed: true },
 };
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Health
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 app.get("/", (req, res) => {
   res.status(200).json({
@@ -100,42 +66,8 @@ app.get("/", (req, res) => {
   });
 });
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Webhook verification
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
@@ -149,42 +81,8 @@ app.get("/webhook", (req, res) => {
   return res.sendStatus(403);
 });
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Incoming WhatsApp messages
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 app.post("/webhook", async (req, res) => {
   try {
@@ -219,42 +117,8 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Frontend endpoint: automatic waitlist notify
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 app.post("/waitlist/notify", async (req, res) => {
   try {
@@ -356,42 +220,8 @@ app.post("/waitlist/notify", async (req, res) => {
   }
 });
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Main conversation logic
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 async function handleIncomingText(from, rawText, metadata = {}) {
   const text = cleanText(rawText);
@@ -749,42 +579,8 @@ async function handleCancelConfirm(from, text, business, session) {
   await sendMainMenu(from, business);
 }
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Waitlist automation
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 async function notifyWaitlistForFreedSlot(business, date, time) {
   try {
@@ -914,42 +710,8 @@ function buildWaitlistMessage({ name, businessName, date, time, claimUrl }) {
   );
 }
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Menu messages
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 async function sendMainMenu(from, business) {
   const name = business.businessName || business.name || "העסק";
@@ -966,42 +728,8 @@ async function sendMainMenu(from, business) {
   await sendWhatsAppMessage(from, msg);
 }
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Business data
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 async function getBusinessSettings(businessId) {
   if (!businessId) return null;
@@ -1066,42 +794,8 @@ function normalizeServices(services) {
   return cleaned.length ? cleaned : DEFAULT_SERVICES;
 }
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Days and slots
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 async function getAvailableDays(businessId, business) {
   const days = [];
@@ -1177,42 +871,8 @@ async function isSlotTaken(businessId, dateKey, time) {
   return snap.docs.some((d) => isActiveAppointment(d.data()));
 }
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Cancel appointments
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 async function getFutureAppointmentsByPhone(businessId, whatsappPhone) {
   const phone = whatsappToIsraeliPhone(whatsappPhone);
@@ -1233,42 +893,8 @@ function isActiveAppointment(a) {
   return !["cancelled", "canceled", "בוטל"].includes(status);
 }
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Sessions
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 async function getSession(from) {
   const doc = await db.collection(SESSIONS_COLLECTION).doc(from).get();
@@ -1291,42 +917,8 @@ async function clearSession(from) {
   await db.collection(SESSIONS_COLLECTION).doc(from).delete().catch(() => {});
 }
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // WhatsApp API - text messages only
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 async function sendWhatsAppMessage(to, body, options = {}) {
   const activeBusiness = options.business || getWhatsappContext()?.business || null;
@@ -1423,9 +1015,27 @@ function setWhatsappBusinessContext(business) {
 function resolveWhatsAppConfig(business, options = {}) {
   const store = getWhatsappContext() || {};
   const activeBusiness = business || store.business || null;
+  const mode = getWhatsappBotMode(activeBusiness);
 
-  // יציב כרגע: תמיד משתמשים במספר המרכזי שמוגדר ב-Cloud Run.
-  // זה מונע מצב שהבוט מנסה לשלוח דרך מספר/טוקן פרטי של עסק שלא מוגדרים נכון.
+  if (mode === "private") {
+    return {
+      mode: "private",
+      businessId: activeBusiness?.businessId || activeBusiness?.id || store.businessId || "",
+      phoneNumberId: String(
+        activeBusiness?.whatsappPhoneNumberId ||
+        activeBusiness?.phoneNumberId ||
+        activeBusiness?.waPhoneNumberId ||
+        ""
+      ).trim(),
+      token: String(
+        activeBusiness?.whatsappAccessToken ||
+        activeBusiness?.accessToken ||
+        activeBusiness?.waAccessToken ||
+        ""
+      ).trim(),
+    };
+  }
+
   return {
     mode: "central",
     businessId: activeBusiness?.businessId || activeBusiness?.id || store.businessId || "",
@@ -1449,61 +1059,26 @@ function extractMessageText(message) {
   return "";
 }
 
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 // Helpers
-
-function getWhatsappBotMode(business){
-  const mode = String(
-    business?.whatsappBotMode ||
-    (business?.whatsappEnabled === false ? "off" : business?.whatsappMode) ||
-    "central"
-  ).toLowerCase();
-
-  if(mode === "off") return "off";
-  if(mode === "private") return "private";
-  return "central";
-}
-
-function isWhatsappBotDisabled(business){
-  return getWhatsappBotMode(business) === "off";
-}
-
 // =======================
 
-function isWhatsappBotExplicitlyFalse(value) {
-  if (value === false || value === 0) return true;
-  const normalized = String(value ?? "").trim().toLowerCase();
-  return ["false", "0", "off", "כבוי", "disabled", "no"].includes(normalized);
+function getWhatsappBotMode(business) {
+  const explicit = String(business?.whatsappBotMode || "").trim().toLowerCase();
+  if (["off", "central", "private"].includes(explicit)) return explicit;
+
+  const legacyEnabled = business?.whatsappEnabled ?? business?.whatsappBotEnabled ?? business?.botEnabled ?? business?.waBotEnabled;
+  if (legacyEnabled === false || legacyEnabled === 0) return "off";
+
+  const legacyText = String(legacyEnabled ?? "").trim().toLowerCase();
+  if (["false", "0", "off", "כבוי", "disabled", "no"].includes(legacyText)) return "off";
+
+  const legacyMode = String(business?.whatsappMode || business?.waMode || DEFAULT_WHATSAPP_MODE || "central").trim().toLowerCase();
+  return legacyMode === "private" ? "private" : "central";
 }
 
 function isWhatsappBotDisabled(business) {
-  if (!business) return false;
-
-  const fields = [
-    business.whatsappEnabled,
-    business.whatsappBotEnabled,
-    business.botEnabled,
-    business.waBotEnabled
-  ];
-
-  return fields.some(isWhatsappBotExplicitlyFalse);
+  return getWhatsappBotMode(business) === "off";
 }
 
 function extractStartBusinessId(text) {
