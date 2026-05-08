@@ -134,6 +134,16 @@ app.post("/waitlist/notify", async (req, res) => {
     }
 
     const business = await getBusinessSettings(businessId);
+    if (isWhatsappBotDisabled(business)) {
+      return res.status(200).json({
+        ok: true,
+        sent: 0,
+        failed: 0,
+        totalRecipients: 0,
+        message: "whatsapp_bot_disabled",
+      });
+    }
+
     const finalBusinessName = businessName || business?.businessName || business?.name || "העסק";
 
     const candidates = entries.length
@@ -211,25 +221,6 @@ app.post("/waitlist/notify", async (req, res) => {
 });
 
 // =======================
-// WhatsApp bot availability
-// =======================
-function isWhatsappBotDisabled(business) {
-  if (!business) return false;
-
-  const values = [
-    business.whatsappEnabled,
-    business.whatsappBotEnabled,
-    business.botEnabled,
-  ];
-
-  return values.some((value) => {
-    if (value === false) return true;
-    if (typeof value === "string" && value.trim().toLowerCase() === "false") return true;
-    return false;
-  });
-}
-
-// =======================
 // Main conversation logic
 // =======================
 async function handleIncomingText(from, rawText, metadata = {}) {
@@ -258,7 +249,10 @@ async function handleIncomingText(from, rawText, metadata = {}) {
 
     if (isWhatsappBotDisabled(business)) {
       await clearSession(from);
-      console.log("⏸️ WhatsApp bot disabled for business", { businessId: startBusinessId, from });
+      console.log("⏸️ WhatsApp bot is disabled for business start flow", {
+        businessId: startBusinessId,
+        from,
+      });
       return;
     }
 
@@ -293,7 +287,10 @@ async function handleIncomingText(from, rawText, metadata = {}) {
 
     if (isWhatsappBotDisabled(business)) {
       await clearSession(from);
-      console.log("⏸️ WhatsApp bot disabled for business", { businessId: session.businessId, from });
+      console.log("⏸️ WhatsApp bot is disabled for business menu flow", {
+        businessId: session.businessId,
+        from,
+      });
       return;
     }
 
@@ -319,7 +316,10 @@ async function handleIncomingText(from, rawText, metadata = {}) {
 
   if (isWhatsappBotDisabled(business)) {
     await clearSession(from);
-    console.log("⏸️ WhatsApp bot disabled for business", { businessId: session.businessId, from });
+    console.log("⏸️ WhatsApp bot is disabled for existing session", {
+      businessId: session.businessId,
+      from,
+    });
     return;
   }
 
@@ -585,6 +585,14 @@ async function handleCancelConfirm(from, text, business, session) {
 async function notifyWaitlistForFreedSlot(business, date, time) {
   try {
     if (!business?.businessId || !date || !isValidTime(time)) return { sent: 0, failed: 0 };
+    if (isWhatsappBotDisabled(business)) {
+      console.log("⏸️ Waitlist notify skipped because WhatsApp bot is disabled", {
+        businessId: business.businessId,
+        date,
+        time,
+      });
+      return { sent: 0, failed: 0, disabled: true };
+    }
 
     const waiting = await getWaitingEntriesForDate(business.businessId, date);
     if (!waiting.length) {
@@ -913,7 +921,17 @@ async function clearSession(from) {
 // WhatsApp API - text messages only
 // =======================
 async function sendWhatsAppMessage(to, body, options = {}) {
-  const config = resolveWhatsAppConfig(options.business || null, options);
+  const activeBusiness = options.business || getWhatsappContext()?.business || null;
+  if (activeBusiness && isWhatsappBotDisabled(activeBusiness)) {
+    console.log("⏸️ WhatsApp message skipped because bot is disabled", {
+      businessId: activeBusiness.businessId || activeBusiness.id || "",
+      to,
+      preview: String(body || "").slice(0, 120),
+    });
+    return null;
+  }
+
+  const config = resolveWhatsAppConfig(activeBusiness, options);
 
   if (!config.token || !config.phoneNumberId) {
     console.error("Missing WhatsApp token or phoneNumberId", {
@@ -1026,6 +1044,26 @@ function extractMessageText(message) {
 // =======================
 // Helpers
 // =======================
+
+function isWhatsappBotExplicitlyFalse(value) {
+  if (value === false || value === 0) return true;
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return ["false", "0", "off", "כבוי", "disabled", "no"].includes(normalized);
+}
+
+function isWhatsappBotDisabled(business) {
+  if (!business) return false;
+
+  const fields = [
+    business.whatsappEnabled,
+    business.whatsappBotEnabled,
+    business.botEnabled,
+    business.waBotEnabled
+  ];
+
+  return fields.some(isWhatsappBotExplicitlyFalse);
+}
+
 function extractStartBusinessId(text) {
   const match = String(text || "").trim().match(/^start[_\s-]+([a-z0-9_-]+)$/i);
   return match ? cleanBusinessId(match[1]) : "";
