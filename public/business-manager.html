@@ -345,13 +345,13 @@
           </div>
           <div>
             <label>Phone Number ID</label>
-            <input id="whatsappPhoneNumberId" class="ltr" placeholder="רק במספר פרטי לעסק" />
+            <input id="whatsappPhoneNumberId" class="ltr" placeholder="רק במצב: דרך מספר בעל העסק" />
           </div>
         </div>
 
         <label>Access Token פרטי לעסק</label>
-        <input id="whatsappAccessToken" class="ltr" placeholder="לא חובה בשלב המרכזי — רק אם לעסק יש מספר משלו" />
-        <div class="hint">ברוב העסקים תשאיר ריק. אם לעסק יש מספר משלו ב־Meta, שמים כאן Phone Number ID וטוקן מתאים.</div>
+        <input id="whatsappAccessToken" class="ltr" placeholder="רק במצב: דרך מספר בעל העסק" />
+        <div class="hint">אם בוחרים “דרך המספר שלי” — משאירים כאן ריק. אם לעסק יש מספר Meta משלו, ממלאים Phone Number ID וטוקן מתאים.</div>
 
         <div class="row">
           <div><label>גישת בעל עסק</label><select id="ownerAccess"><option value="false">סגורה — רק אני מנהל</option><option value="true">פתוחה — הלקוח יכול לערוך</option></select></div>
@@ -1005,7 +1005,9 @@
           phoneNumberId:whatsappPhoneNumberId,
           whatsappAccessToken,
           whatsappEnabled,
+          whatsappBotEnabled:whatsappEnabled,
           botEnabled:whatsappEnabled,
+          waBotEnabled:whatsappEnabled,
           ownerAccess,
           clientOwnerAccess:ownerAccess,
           plan:whatsappEnabled ? (whatsappMode === "private" ? "whatsapp-private" : "whatsapp-central") : "basic",
@@ -1082,7 +1084,9 @@
           whatsappBotMode:next,
           whatsappMode:next === "private" ? "private" : "central",
           whatsappEnabled:next !== "off",
+          whatsappBotEnabled:next !== "off",
           botEnabled:next !== "off",
+          waBotEnabled:next !== "off",
           plan:next === "off" ? "basic" : (next === "private" ? "whatsapp-private" : "whatsapp-central"),
           updatedAtMs:Date.now(),
           updatedAt:firebase.firestore.FieldValue.serverTimestamp()
