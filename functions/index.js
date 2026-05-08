@@ -22,6 +22,12 @@ if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
   console.error("❌ חסר WHATSAPP_TOKEN או PHONE_NUMBER_ID");
 }
 
+console.log("✅ WhatsApp env loaded", {
+  hasWhatsappToken: Boolean(WHATSAPP_TOKEN),
+  phoneNumberId: PHONE_NUMBER_ID || "",
+  verifyTokenConfigured: Boolean(VERIFY_TOKEN),
+});
+
 const BUSINESS_SETTINGS_COLLECTION = "businessSettings";
 const APPOINTMENTS_COLLECTION = "appointments";
 const WAITLIST_COLLECTION = "waitlist";
@@ -954,43 +960,14 @@ function setWhatsappBusinessContext(business) {
 function resolveWhatsAppConfig(business, options = {}) {
   const store = getWhatsappContext() || {};
   const activeBusiness = business || store.business || null;
-  const mode = String(
-    options.mode ||
-      activeBusiness?.whatsappMode ||
-      activeBusiness?.waMode ||
-      DEFAULT_WHATSAPP_MODE ||
-      "central"
-  ).toLowerCase();
 
-  const privatePhoneNumberId = String(
-    options.phoneNumberId ||
-      activeBusiness?.whatsappPhoneNumberId ||
-      activeBusiness?.phoneNumberId ||
-      activeBusiness?.waPhoneNumberId ||
-      ""
-  ).trim();
-
-  const privateToken = String(
-    options.token ||
-      activeBusiness?.whatsappAccessToken ||
-      activeBusiness?.accessToken ||
-      activeBusiness?.waAccessToken ||
-      ""
-  ).trim();
-
-  // Use a private/dedicated number only when BOTH private phoneNumberId and private token exist.
-  // Otherwise always fall back to the central WhatsApp number configured in Cloud Run.
-  const usePrivate = ["private", "business", "own", "dedicated", "מספר-עסק"].includes(mode) && privatePhoneNumberId && privateToken;
-
+  // יציב כרגע: תמיד משתמשים במספר המרכזי שמוגדר ב-Cloud Run.
+  // זה מונע מצב שהבוט מנסה לשלוח דרך מספר/טוקן פרטי של עסק שלא מוגדרים נכון.
   return {
-    mode: usePrivate ? "private" : "central",
+    mode: "central",
     businessId: activeBusiness?.businessId || activeBusiness?.id || store.businessId || "",
-    phoneNumberId: usePrivate
-      ? privatePhoneNumberId
-      : String(options.centralPhoneNumberId || PHONE_NUMBER_ID || store.incomingPhoneNumberId || "").trim(),
-    token: usePrivate
-      ? privateToken
-      : String(options.centralToken || WHATSAPP_TOKEN || "").trim(),
+    phoneNumberId: String(PHONE_NUMBER_ID || store.incomingPhoneNumberId || "").trim(),
+    token: String(WHATSAPP_TOKEN || "").trim(),
   };
 }
 
@@ -1137,6 +1114,17 @@ app.get("/debug/whatsapp", async (req, res) => {
     defaultWhatsappMode: DEFAULT_WHATSAPP_MODE,
     appBaseUrl: APP_BASE_URL,
   });
+});
+
+app.get("/debug/send-test", async (req, res) => {
+  try {
+    const to = String(req.query.to || "").trim();
+    if (!to) return res.status(400).json({ ok: false, error: "missing_to" });
+    const result = await sendWhatsAppMessage(to, "בדיקת שליחה מהשרת ✅");
+    return res.status(200).json({ ok: true, result });
+  } catch (err) {
+    return res.status(500).json({ ok: false, error: getErrorPayload(err) });
+  }
 });
 
 exports.api = functions.https.onRequest(app);
