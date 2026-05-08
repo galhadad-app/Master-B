@@ -16,7 +16,7 @@ const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "gal_verify_token";
 const APP_BASE_URL = process.env.APP_BASE_URL || "https://galhadad-app.github.io/Master-B/";
-const DEFAULT_WHATSAPP_MODE = process.env.DEFAULT_WHATSAPP_MODE || "central";
+const DEFAULT_WHATSAPP_MODE = process.env.DEFAULT_WHATSAPP_MODE || "off";
 
 if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
   console.error("❌ חסר WHATSAPP_TOKEN או PHONE_NUMBER_ID");
@@ -219,6 +219,25 @@ app.post("/waitlist/notify", async (req, res) => {
     return res.status(500).json({ ok: false, error: getErrorPayload(err) });
   }
 });
+
+
+function getWhatsappBotMode(business) {
+  const mode = String(
+    business?.whatsappBotMode ||
+    business?.whatsappMode ||
+    "off"
+  ).trim().toLowerCase();
+
+  if (["central", "private", "off"].includes(mode)) {
+    return mode;
+  }
+
+  return "off";
+}
+
+function isWhatsappBotDisabled(business) {
+  return getWhatsappBotMode(business) === "off";
+}
 
 // =======================
 // Main conversation logic
