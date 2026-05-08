@@ -66,6 +66,35 @@ app.get("/", (req, res) => {
   });
 });
 
+
+app.get("/debug/business-bot-mode", async (req, res) => {
+  try {
+    const businessId = cleanBusinessId(req.query.businessId || req.query.business || "");
+    if (!businessId) return res.status(400).json({ ok: false, error: "missing_businessId" });
+
+    const business = await getBusinessSettings(businessId);
+    if (!business) return res.status(404).json({ ok: false, error: "business_not_found" });
+
+    return res.status(200).json({
+      ok: true,
+      businessId,
+      whatsappBotMode: getWhatsappBotMode(business),
+      isDisabled: isWhatsappBotDisabled(business),
+      raw: {
+        whatsappBotMode: business.whatsappBotMode ?? null,
+        whatsappMode: business.whatsappMode ?? null,
+        whatsappEnabled: business.whatsappEnabled ?? null,
+        botEnabled: business.botEnabled ?? null,
+        hasPrivatePhoneNumberId: Boolean(business.whatsappPhoneNumberId || business.phoneNumberId || business.waPhoneNumberId),
+        hasPrivateAccessToken: Boolean(business.whatsappAccessToken || business.accessToken || business.waAccessToken),
+      },
+    });
+  } catch (err) {
+    console.error("debug/business-bot-mode error:", getErrorPayload(err));
+    return res.status(500).json({ ok: false, error: getErrorPayload(err) });
+  }
+});
+
 // =======================
 // Webhook verification
 // =======================
@@ -219,23 +248,6 @@ app.post("/waitlist/notify", async (req, res) => {
     return res.status(500).json({ ok: false, error: getErrorPayload(err) });
   }
 });
-
-function getWhatsappBotMode(business) {
-  const explicitMode = String(business?.whatsappBotMode || "").trim().toLowerCase();
-  if (["off", "central", "private"].includes(explicitMode)) return explicitMode;
-
-  const legacyEnabled = business?.whatsappEnabled ?? business?.whatsappBotEnabled ?? business?.botEnabled ?? business?.waBotEnabled;
-  if (legacyEnabled === false || legacyEnabled === 0) return "off";
-  const legacyEnabledText = String(legacyEnabled ?? "").trim().toLowerCase();
-  if (["false", "0", "off", "כבוי", "disabled", "no"].includes(legacyEnabledText)) return "off";
-
-  const legacyMode = String(business?.whatsappMode || business?.waMode || DEFAULT_WHATSAPP_MODE || "central").trim().toLowerCase();
-  return legacyMode === "private" ? "private" : "central";
-}
-
-function isWhatsappBotDisabled(business) {
-  return getWhatsappBotMode(business) === "off";
-}
 
 // =======================
 // Main conversation logic
@@ -1032,9 +1044,17 @@ function setWhatsappBusinessContext(business) {
 function resolveWhatsAppConfig(business, options = {}) {
   const store = getWhatsappContext() || {};
   const activeBusiness = business || store.business || null;
+  const mode = getWhatsappBotMode(activeBusiness);
 
-  // יציב כרגע: תמיד משתמשים במספר המרכזי שמוגדר ב-Cloud Run.
-  // זה מונע מצב שהבוט מנסה לשלוח דרך מספר/טוקן פרטי של עסק שלא מוגדרים נכון.
+  if (mode === "private") {
+    return {
+      mode: "private",
+      businessId: activeBusiness?.businessId || activeBusiness?.id || store.businessId || "",
+      phoneNumberId: String(activeBusiness?.whatsappPhoneNumberId || activeBusiness?.phoneNumberId || activeBusiness?.waPhoneNumberId || "").trim(),
+      token: String(activeBusiness?.whatsappAccessToken || activeBusiness?.accessToken || activeBusiness?.waAccessToken || "").trim(),
+    };
+  }
+
   return {
     mode: "central",
     businessId: activeBusiness?.businessId || activeBusiness?.id || store.businessId || "",
@@ -1061,6 +1081,24 @@ function extractMessageText(message) {
 // =======================
 // Helpers
 // =======================
+
+function getWhatsappBotMode(business) {
+  const explicit = String(business?.whatsappBotMode || "").trim().toLowerCase();
+  if (["off", "central", "private"].includes(explicit)) return explicit;
+
+  const legacyEnabled = business?.whatsappEnabled ?? business?.whatsappBotEnabled ?? business?.botEnabled ?? business?.waBotEnabled;
+  if (legacyEnabled === false || legacyEnabled === 0) return "off";
+
+  const legacyEnabledText = String(legacyEnabled ?? "").trim().toLowerCase();
+  if (["false", "0", "off", "כבוי", "disabled", "no"].includes(legacyEnabledText)) return "off";
+
+  const legacyMode = String(business?.whatsappMode || business?.waMode || DEFAULT_WHATSAPP_MODE || "central").trim().toLowerCase();
+  return legacyMode === "private" ? "private" : "central";
+}
+
+function isWhatsappBotDisabled(business) {
+  return getWhatsappBotMode(business) === "off";
+}
 
 function extractStartBusinessId(text) {
   const match = String(text || "").trim().match(/^start[_\s-]+([a-z0-9_-]+)$/i);
