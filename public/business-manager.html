@@ -355,11 +355,11 @@
 
         <div class="row">
           <div><label>גישת בעל עסק</label><select id="ownerAccess"><option value="false">סגורה — רק אני מנהל</option><option value="true">פתוחה — הלקוח יכול לערוך</option></select></div>
+          <div><label>סטטוס פנימי</label><input value="ניהול מרכזי אצלך" disabled /></div>
         </div>
 
         <div class="row">
           <div><label>קוד בעל עסק</label><input id="ownerCode" inputmode="numeric" maxlength="4" placeholder="1234" /></div>
-          <div><label>סטטוס פנימי</label><input value="ניהול מרכזי אצלך" disabled /></div>
         </div>
 
         <button class="btn primary" id="saveBtn">שמור עסק</button>
@@ -435,19 +435,31 @@
       return fallback;
     }
 
-    
+    function whatsappBotModeForBusiness(b){
+      const explicit = String(b?.whatsappBotMode || "").toLowerCase();
+      if(explicit === "off" || explicit === "central" || explicit === "private") return explicit;
+
+      const legacyEnabled = boolValue(b?.whatsappEnabled, boolValue(b?.botEnabled, false));
+      if(!legacyEnabled) return "off";
+
+      const legacyMode = String(b?.whatsappMode || b?.waMode || "central").toLowerCase();
+      return legacyMode === "private" ? "private" : "central";
+    }
+
     function whatsappEnabledForBusiness(b){
-      return String(b?.whatsappBotMode || "").toLowerCase() !== "off"
-        && (b?.whatsappEnabled !== false);
+      return whatsappBotModeForBusiness(b) !== "off";
     }
 
     function whatsappModeForBusiness(b){
-      const mode = String(b?.whatsappBotMode || b?.whatsappMode || "central").toLowerCase();
+      const mode = whatsappBotModeForBusiness(b);
       return mode === "private" ? "private" : "central";
     }
 
     function whatsappModeLabel(b){
-      return whatsappModeForBusiness(b) === "private" ? "מספר פרטי לעסק" : "מספר מרכזי של המערכת";
+      const mode = whatsappBotModeForBusiness(b);
+      if(mode === "off") return "כבוי";
+      if(mode === "private") return "דרך מספר בעל העסק";
+      return "דרך המספר שלי";
     }
 
     function ownerAccessForBusiness(b){
@@ -478,7 +490,6 @@
       whatsappBotMode:document.getElementById("whatsappBotMode"),
       whatsappPhoneNumberId:document.getElementById("whatsappPhoneNumberId"),
       whatsappAccessToken:document.getElementById("whatsappAccessToken"),
-      whatsappEnabled:document.getElementById("whatsappEnabled"),
       ownerAccess:document.getElementById("ownerAccess"),
       ownerCode:document.getElementById("ownerCode"),
       saveBtn:document.getElementById("saveBtn"),
@@ -926,10 +937,9 @@
       el.businessId.value="";
       el.businessId.disabled=false;
       el.whatsappNumber.value="";
-      el.whatsappMode.value="central";
+      el.whatsappBotMode.value="off";
       el.whatsappPhoneNumberId.value="";
       el.whatsappAccessToken.value="";
-      el.whatsappEnabled.value="false";
       el.ownerAccess.value="false";
       el.ownerCode.value="1234";
       el.saveStatus.textContent="";
@@ -945,10 +955,9 @@
       el.businessId.value=id;
       el.businessId.disabled=true;
       el.whatsappNumber.value=cleanPhone(b.whatsappNumber||b.phone||"");
-      el.whatsappBotMode.value = b.whatsappBotMode || (!whatsappEnabledForBusiness(b) ? "off" : whatsappModeForBusiness(b));
+      el.whatsappBotMode.value=whatsappBotModeForBusiness(b);
       el.whatsappPhoneNumberId.value=String(b.whatsappPhoneNumberId||b.phoneNumberId||b.waPhoneNumberId||"");
       el.whatsappAccessToken.value=String(b.whatsappAccessToken||b.accessToken||b.waAccessToken||"");
-      el.whatsappEnabled.value=whatsappEnabledForBusiness(b) ? "true" : "false";
       el.ownerAccess.value=ownerAccessForBusiness(b) ? "true" : "false";
       el.ownerCode.value=digits(b.ownerCode||"1234").slice(0,4);
       showScreen("form");
@@ -958,11 +967,11 @@
       const businessName=el.businessName.value.trim();
       const businessId=cleanId(el.businessId.value);
       const whatsappNumber=cleanPhone(el.whatsappNumber.value);
-      const whatsappBotMode = String(el.whatsappBotMode.value || "off");
-      const whatsappMode = whatsappBotMode === "private" ? "private" : "central";
+      const whatsappBotMode=String(el.whatsappBotMode.value||"off").toLowerCase();
+      const whatsappMode=whatsappBotMode === "private" ? "private" : "central";
       const whatsappPhoneNumberId=String(el.whatsappPhoneNumberId.value||"").trim();
       const whatsappAccessToken=String(el.whatsappAccessToken.value||"").trim();
-      const whatsappEnabled = whatsappBotMode !== "off";
+      const whatsappEnabled=whatsappBotMode !== "off";
       const ownerAccess=el.ownerAccess.value === "true";
       const ownerCode=digits(el.ownerCode.value).slice(0,4)||"1234";
 
@@ -1066,20 +1075,19 @@
     async function toggleWhatsappFeature(id){
       const b=businesses.find(x=>x.id===id);
       if(!b) return;
-      const next=!whatsappEnabledForBusiness(b);
-      const msg=next
-        ? "להפעיל בוט וואטסאפ לעסק הזה?"
-        : "לכבות את בוט הוואטסאפ לעסק הזה? האפליקציה עצמה תמשיך לעבוד.";
-      if(!confirm(msg)) return;
+      const current=whatsappBotModeForBusiness(b);
+      const next=current === "off" ? "central" : "off";
       try{
         await db.collection(COLLECTION).doc(id).set({
-          whatsappEnabled:next,
-          botEnabled:next,
-          plan:next ? "whatsapp" : "basic",
+          whatsappBotMode:next,
+          whatsappMode:next === "private" ? "private" : "central",
+          whatsappEnabled:next !== "off",
+          botEnabled:next !== "off",
+          plan:next === "off" ? "basic" : (next === "private" ? "whatsapp-private" : "whatsapp-central"),
           updatedAtMs:Date.now(),
           updatedAt:firebase.firestore.FieldValue.serverTimestamp()
         },{merge:true});
-        showToast(next ? "בוט הוואטסאפ הופעל" : "בוט הוואטסאפ כובה");
+        showToast(next === "off" ? "בוט הוואטסאפ כובה" : "בוט הוואטסאפ הופעל דרך המספר שלך");
       }catch(err){
         console.error(err);
         showToast("עדכון וואטסאפ נכשל",true);
@@ -1153,7 +1161,6 @@
             <button class="btn ghost small" onclick="fillForm('${js(id)}')">ערוך</button>
             <button class="btn ghost small" onclick="window.open('${js(app)}','_blank')">פתח אפליקציה</button>
             <button class="btn ghost small" onclick="openReports('${js(id)}')">דוחות</button>
-            <button class="btn ${whatsappOn ? "unfreeze" : "freeze"} small" onclick="toggleWhatsappFeature('${js(id)}')">${whatsappOn ? "כבה בוט" : "הפעל בוט"}</button>
             <button class="btn ${ownerOpen ? "unfreeze" : "freeze"} small" onclick="toggleOwnerAccess('${js(id)}')">${ownerOpen ? "סגור גישה" : "פתח גישה"}</button>
             <button class="btn ${isBusinessFrozen(b) ? "unfreeze" : "freeze"} small" onclick="toggleBusinessFreeze('${js(id)}')">${isBusinessFrozen(b) ? "הפעל עסק" : "הקפא עסק"}</button>
             <button class="btn danger small" onclick="deleteBusiness('${js(id)}')">מחק</button>
