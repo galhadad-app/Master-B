@@ -3988,25 +3988,71 @@ body.business-frozen{overflow:hidden;}
     function playSelectSound(){ const a = document.getElementById('selectSound'); if(!a) return; a.currentTime = 0; a.play().catch(()=>{}); }
     function playBookSound(){ const a = document.getElementById('bookSound'); if(!a) return; a.currentTime = 0; a.play().catch(()=>{}); }
 
+    function normalizeDigitsOnly(value){ return String(value || '').replace(/\D/g, ''); }
+
+    function toWhatsappIntlPhone(phone){
+      const digits = normalizeDigitsOnly(phone);
+      if(!digits) return '';
+      if(digits.startsWith('9720')) return '972' + digits.slice(4);
+      if(digits.startsWith('972')) return digits;
+      if(digits.startsWith('0')) return '972' + digits.slice(1);
+      if(digits.length === 9 && digits.startsWith('5')) return '972' + digits;
+      return digits;
+    }
+
+    function toDialPhone(phone){
+      const digits = normalizeDigitsOnly(phone);
+      if(!digits) return '';
+      if(digits.startsWith('9720')) return '0' + digits.slice(4);
+      if(digits.startsWith('972')) return '0' + digits.slice(3);
+      return digits;
+    }
+
     function getBusinessPhoneRaw(){
-      return String((currentBusinessSettings && currentBusinessSettings.whatsappNumber) || '').replace(/\D/g, '');
+      return String((currentBusinessSettings && (currentBusinessSettings.businessPhone || currentBusinessSettings.phone || currentBusinessSettings.whatsappNumber)) || '').replace(/\D/g, '');
+    }
+
+    function getBusinessWhatsappRaw(){
+      return String((currentBusinessSettings && (currentBusinessSettings.businessWhatsapp || currentBusinessSettings.whatsappNumber || currentBusinessSettings.whatsapp || currentBusinessSettings.businessPhone || currentBusinessSettings.phone)) || '').replace(/\D/g, '');
+    }
+
+    function getClientWhatsappMode(){
+      const raw = String((currentBusinessSettings && (currentBusinessSettings.whatsappBotMode || currentBusinessSettings.whatsappMode || currentBusinessSettings.waMode)) || '').trim().toLowerCase();
+      if(['bot','central','בוט'].includes(raw)) return 'bot';
+      if(['owner','private','business','בעל עסק'].includes(raw)) return 'owner';
+      if(['regular','רגיל','off','none','no','disabled','כבוי'].includes(raw)) return 'regular';
+      const legacyOff = currentBusinessSettings && (currentBusinessSettings.whatsappEnabled === false || currentBusinessSettings.botEnabled === false || currentBusinessSettings.whatsappBotEnabled === false);
+      return legacyOff ? 'regular' : 'bot';
+    }
+
+    function getCentralBotWhatsappNumber(){
+      return normalizeDigitsOnly((currentBusinessSettings && (currentBusinessSettings.centralBotWhatsappNumber || currentBusinessSettings.botWhatsappNumber)) || '972547674814');
     }
 
     function getWhatsappLink(){
-      const phone = getBusinessPhoneRaw();
-      if(!phone) return '#';
-      const intl = phone.startsWith('0') ? ('972' + phone.slice(1)) : phone;
+      const mode = getClientWhatsappMode();
       const businessId = String((currentBusinessSettings && currentBusinessSettings.businessId) || ACTIVE_BUSINESS_ID || '').trim();
-      const botEnabled = !(currentBusinessSettings && (currentBusinessSettings.whatsappEnabled === false || currentBusinessSettings.botEnabled === false));
-      const base = 'https://wa.me/' + intl;
-      if(botEnabled && businessId){
-        return base + '?text=' + encodeURIComponent('hi_' + businessId);
+      let targetPhone = '';
+      let text = '';
+
+      if(mode === 'bot'){
+        targetPhone = getCentralBotWhatsappNumber();
+        text = businessId ? ('start_' + businessId) : '';
+      }else if(mode === 'owner'){
+        targetPhone = getBusinessWhatsappRaw();
+        text = businessId ? ('start_' + businessId) : '';
+      }else{
+        targetPhone = getBusinessWhatsappRaw();
       }
-      return base;
+
+      const intl = toWhatsappIntlPhone(targetPhone);
+      if(!intl) return '#';
+      const base = 'https://wa.me/' + intl;
+      return text ? (base + '?text=' + encodeURIComponent(text)) : base;
     }
 
     function getPhoneLink(){
-      const phone = getBusinessPhoneRaw();
+      const phone = toDialPhone(getBusinessPhoneRaw());
       return phone ? ('tel:' + phone) : '#';
     }
 
