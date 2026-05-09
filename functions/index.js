@@ -166,8 +166,8 @@ app.post("/waitlist/notify", async (req, res) => {
 
     for (const entry of waiting) {
       try {
-        const phone = toWhatsAppRecipient(normalizePhone(entry.phone));
-        if (!phone) throw new Error("invalid_phone");
+        const phone = getWaitlistRecipientPhone(entry, business);
+        if (!phone) throw new Error("invalid_waitlist_recipient");
 
         const waitlistId = entry.id || entry.waitlistId || "";
         const claimToken = entry.claimToken || createClaimToken();
@@ -302,7 +302,7 @@ async function handleIncomingText(from, rawText, metadata = {}) {
   if (!session?.businessId) {
     await sendWhatsAppMessage(
       from,
-      "הבוט עובד ✅\nכדי להתחיל קביעת תור שלח: start_sason"
+      "הבוט עובד ✅\nכדי להתחיל בפעם הראשונה צריך להיכנס דרך אייקון הוואטסאפ באפליקציה של העסק."
     );
     return;
   }
@@ -515,7 +515,11 @@ async function handleAskName(from, text, business, session) {
     createdAtMs: Date.now(),
   });
 
-  await clearSession(from);
+  await saveSession(from, {
+    step: "main_menu",
+    businessId: business.businessId,
+    businessName: business.businessName || business.name || "העסק",
+  });
 
   await sendWhatsAppMessage(
     from,
@@ -564,7 +568,11 @@ async function handleCancelConfirm(from, text, business, session) {
     }
 
     await db.collection(APPOINTMENTS_COLLECTION).doc(appointment.id).delete();
-    await clearSession(from);
+    await saveSession(from, {
+      step: "main_menu",
+      businessId: business.businessId,
+      businessName: business.businessName || business.name || "העסק",
+    });
 
     await sendWhatsAppMessage(
       from,
@@ -606,8 +614,8 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
 
     for (const entry of waiting) {
       try {
-        const phone = toWhatsAppRecipient(normalizePhone(entry.phone));
-        if (!phone) throw new Error("invalid_phone");
+        const phone = getWaitlistRecipientPhone(entry, business);
+        if (!phone) throw new Error("invalid_waitlist_recipient");
 
         const claimToken = entry.claimToken || createClaimToken();
         const claimUrl = buildClaimUrl({ claimToken, offerToken }, time);
@@ -681,12 +689,51 @@ function normalizeWaitlistEntry(entry) {
     firstName: String(entry.firstName || "").trim(),
     lastName: String(entry.lastName || "").trim(),
     phone: normalizePhone(entry.phone),
+    phoneDisplay: normalizePhone(entry.phoneDisplay || entry.displayPhone || entry.customerPhone || entry.clientPhone || ""),
     service: String(entry.service || "").trim(),
     status: String(entry.status || "ממתין").trim(),
     claimToken: String(entry.claimToken || "").trim(),
     offerToken: String(entry.offerToken || "").trim(),
     createdAtMs: Number(entry.createdAtMs || 0),
   };
+}
+
+
+function getCentralBotWhatsappNumber() {
+  return normalizePhone(process.env.CENTRAL_BOT_WHATSAPP_NUMBER || process.env.BOT_WHATSAPP_NUMBER || "972547674814");
+}
+
+function getBusinessWhatsappNumbers(business = {}) {
+  return [
+    business.whatsappNumber,
+    business.businessWhatsapp,
+    business.whatsapp,
+    business.phone,
+    business.businessPhone,
+  ].map(normalizePhone).filter(Boolean);
+}
+
+function getWaitlistRecipientPhone(entry = {}, business = {}) {
+  const botNumber = getCentralBotWhatsappNumber();
+  const businessNumbers = getBusinessWhatsappNumbers(business);
+  const candidates = [
+    entry.phone,
+    entry.phoneDisplay,
+    entry.customerPhone,
+    entry.clientPhone,
+    entry.mobile,
+    entry.whatsapp,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = toWhatsAppRecipient(candidate);
+    if (!normalized) continue;
+    if (botNumber && normalized === botNumber) continue;
+    if (businessNumbers.includes(normalized) && candidates.some((c) => normalizePhone(c) && normalizePhone(c) !== normalized)) continue;
+    return normalized;
+  }
+
+  return "";
 }
 
 function buildClaimUrl(entry, time) {
@@ -1064,25 +1111,28 @@ function extractMessageText(message) {
 // =======================
 
 function getWhatsappBotMode(business) {
-  const explicit = String(business?.whatsappBotMode || "").trim().toLowerCase();
+  const explicit = String(
+    business?.whatsappBotMode ||
+    business?.whatsappMode ||
+    business?.waMode ||
+    ""
+  ).trim().toLowerCase();
 
-  // New 3-mode model from the business manager:
-  // regular = no WhatsApp automation, bot = central bot, owner = business owner's own WhatsApp API.
-  if (["regular", "רגיל", "off", "none", "disabled", "כבוי"].includes(explicit)) return "off";
-  if (["bot", "בוט", "central", "מרכזי"].includes(explicit)) return "central";
-  if (["owner", "בעל עסק", "business", "private", "פרטי"].includes(explicit)) return "private";
+  // New 3-mode system from business-manager:
+  // regular = no bot, bot = central bot number, owner = business-owned WhatsApp Cloud number.
+  if (["regular", "רגיל", "off", "none", "no", "disabled", "כבוי"].includes(explicit)) return "off";
+  if (["bot", "central", "בוט"].includes(explicit)) return "central";
+  if (["owner", "private", "business", "בעל עסק"].includes(explicit)) return "private";
 
   const legacyEnabled = business?.whatsappEnabled ?? business?.whatsappBotEnabled ?? business?.botEnabled ?? business?.waBotEnabled;
   if (legacyEnabled === false || legacyEnabled === 0) return "off";
 
   const legacyText = String(legacyEnabled ?? "").trim().toLowerCase();
   if (["false", "0", "off", "regular", "רגיל", "כבוי", "disabled", "no"].includes(legacyText)) return "off";
-  if (["true", "1", "bot", "בוט", "central", "on", "enabled", "yes"].includes(legacyText)) return "central";
-  if (["owner", "בעל עסק", "business", "private"].includes(legacyText)) return "private";
 
-  const legacyMode = String(business?.whatsappMode || business?.waMode || DEFAULT_WHATSAPP_MODE || "central").trim().toLowerCase();
-  if (["regular", "רגיל", "off", "none", "disabled", "כבוי"].includes(legacyMode)) return "off";
-  if (["owner", "בעל עסק", "business", "private", "פרטי"].includes(legacyMode)) return "private";
+  const fallbackMode = String(DEFAULT_WHATSAPP_MODE || "central").trim().toLowerCase();
+  if (["owner", "private", "business"].includes(fallbackMode)) return "private";
+  if (["regular", "off", "none"].includes(fallbackMode)) return "off";
   return "central";
 }
 
