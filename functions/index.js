@@ -1,6 +1,7 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const express = require("express");
+const cors = require("cors");
 const axios = require("axios");
 const { AsyncLocalStorage } = require("async_hooks");
 
@@ -8,6 +9,8 @@ admin.initializeApp();
 
 const db = admin.firestore();
 const app = express();
+app.use(cors({ origin: true }));
+app.options("*", cors({ origin: true }));
 app.use(express.json({ limit: "2mb" }));
 
 const whatsappContext = new AsyncLocalStorage();
@@ -716,23 +719,49 @@ function getBusinessWhatsappNumbers(business = {}) {
 function getWaitlistRecipientPhone(entry = {}, business = {}) {
   const botNumber = getCentralBotWhatsappNumber();
   const businessNumbers = getBusinessWhatsappNumbers(business);
+
+  // These are customer fields only. Do not use bot/business numbers as recipients.
   const candidates = [
     entry.phone,
-    entry.phoneDisplay,
     entry.customerPhone,
     entry.clientPhone,
     entry.mobile,
-    entry.whatsapp,
+    entry.phoneDisplay,
+    entry.customerWhatsapp,
+    entry.clientWhatsapp,
   ];
 
   for (const candidate of candidates) {
     const normalized = toWhatsAppRecipient(candidate);
     if (!normalized) continue;
-    if (botNumber && normalized === botNumber) continue;
-    if (businessNumbers.includes(normalized) && candidates.some((c) => normalizePhone(c) && normalizePhone(c) !== normalized)) continue;
+
+    // Never send a waitlist notification to the bot number itself.
+    if (botNumber && normalized === botNumber) {
+      console.warn("⚠️ Skipping waitlist candidate because it is the central bot number", {
+        waitlistId: entry.id || entry.waitlistId || "",
+        phone: normalized,
+      });
+      continue;
+    }
+
+    // Never send a waitlist notification to the business phone/WhatsApp.
+    if (businessNumbers.includes(normalized)) {
+      console.warn("⚠️ Skipping waitlist candidate because it is a business number", {
+        waitlistId: entry.id || entry.waitlistId || "",
+        businessId: business.businessId || business.id || "",
+        phone: normalized,
+      });
+      continue;
+    }
+
     return normalized;
   }
 
+  console.warn("⚠️ No valid customer recipient found for waitlist entry", {
+    waitlistId: entry.id || entry.waitlistId || "",
+    businessId: business.businessId || business.id || "",
+    rawPhone: entry.phone || "",
+  });
   return "";
 }
 
