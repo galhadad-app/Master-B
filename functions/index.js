@@ -696,7 +696,11 @@ function normalizeWaitlistEntry(entry) {
     firstName: String(entry.firstName || "").trim(),
     lastName: String(entry.lastName || "").trim(),
     phone: normalizePhone(entry.phone),
-    phoneDisplay: normalizePhone(entry.phoneDisplay || entry.displayPhone || entry.customerPhone || entry.clientPhone || ""),
+    phoneDisplay: normalizePhone(entry.phoneDisplay || entry.displayPhone || ""),
+    customerPhone: normalizePhone(entry.customerPhone || entry.clientPhone || entry.phoneDisplay || entry.displayPhone || ""),
+    clientPhone: normalizePhone(entry.clientPhone || entry.customerPhone || entry.phoneDisplay || entry.displayPhone || ""),
+    customerWhatsapp: normalizePhone(entry.customerWhatsapp || entry.clientWhatsapp || ""),
+    clientWhatsapp: normalizePhone(entry.clientWhatsapp || entry.customerWhatsapp || ""),
     service: String(entry.service || "").trim(),
     status: String(entry.status || "ממתין").trim(),
     claimToken: String(entry.claimToken || "").trim(),
@@ -724,24 +728,26 @@ function getWaitlistRecipientPhone(entry = {}, business = {}) {
   const botNumber = getCentralBotWhatsappNumber();
   const businessNumbers = getBusinessWhatsappNumbers(business);
 
-  // These are customer fields only. Do not use bot/business numbers as recipients.
+  // IMPORTANT: a waitlist notification must go to the waiting customer only.
+  // Prefer explicit customer/display fields. Use entry.phone only as a fallback.
   const candidates = [
-    entry.phone,
     entry.customerPhone,
     entry.clientPhone,
-    entry.mobile,
     entry.phoneDisplay,
+    entry.displayPhone,
     entry.customerWhatsapp,
     entry.clientWhatsapp,
+    entry.mobile,
+    entry.phone,
   ];
 
   for (const candidate of candidates) {
     const normalized = toWhatsAppRecipient(candidate);
     if (!normalized) continue;
 
-    // Never send a waitlist notification to the bot number itself.
+    // Never send a waitlist notification to the central bot itself.
     if (botNumber && normalized === botNumber) {
-      console.warn("⚠️ Skipping waitlist candidate because it is the central bot number", {
+      console.warn("⚠️ Skipping waitlist recipient because it is the central bot number", {
         waitlistId: entry.id || entry.waitlistId || "",
         phone: normalized,
       });
@@ -750,7 +756,7 @@ function getWaitlistRecipientPhone(entry = {}, business = {}) {
 
     // Never send a waitlist notification to the business phone/WhatsApp.
     if (businessNumbers.includes(normalized)) {
-      console.warn("⚠️ Skipping waitlist candidate because it is a business number", {
+      console.warn("⚠️ Skipping waitlist recipient because it is a business number", {
         waitlistId: entry.id || entry.waitlistId || "",
         businessId: business.businessId || business.id || "",
         phone: normalized,
@@ -765,6 +771,8 @@ function getWaitlistRecipientPhone(entry = {}, business = {}) {
     waitlistId: entry.id || entry.waitlistId || "",
     businessId: business.businessId || business.id || "",
     rawPhone: entry.phone || "",
+    phoneDisplay: entry.phoneDisplay || "",
+    customerPhone: entry.customerPhone || "",
   });
   return "";
 }
