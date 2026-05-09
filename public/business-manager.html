@@ -332,25 +332,26 @@
 
         <label>מספר וואטסאפ של בעל העסק</label>
         <input id="whatsappNumber" class="ltr" inputmode="numeric" maxlength="12" placeholder="9725XXXXXXXX" />
-        <div class="hint">זה המספר שיופיע באפליקציה. בלי שירות וואטסאפ הוא ייפתח כצ׳אט רגיל; עם שירות וואטסאפ הוא יקבל start_businessId.</div>
+        <div class="hint">במצב רגיל זה הצ׳אט של בעל העסק. במצב בעל עסק זה אותו מספר יקבל start_businessId.</div>
 
         <div class="row">
           <div>
-            <label>שירות וואטסאפ</label>
+            <label>מצב וואטסאפ</label>
             <select id="whatsappBotMode">
-              <option value="off">ללא שירות וואטסאפ</option>
-              <option value="private">פעיל על מספר בעל העסק</option>
+              <option value="off">רגיל</option>
+              <option value="central">בוט</option>
+              <option value="private">בעל עסק</option>
             </select>
           </div>
           <div>
             <label>Phone Number ID</label>
-            <input id="whatsappPhoneNumberId" class="ltr" placeholder="רק אם השירות פעיל על מספר בעל העסק" />
+            <input id="whatsappPhoneNumberId" class="ltr" placeholder="רק במצב: בעל עסק" />
           </div>
         </div>
 
         <label>Access Token של מספר העסק</label>
-        <input id="whatsappAccessToken" class="ltr" placeholder="רק אם השירות פעיל על מספר בעל העסק" />
-        <div class="hint">ללא שירות וואטסאפ — האייקון פותח צ׳אט רגיל. שירות פעיל — האייקון שולח start_businessId למספר של בעל העסק.</div>
+        <input id="whatsappAccessToken" class="ltr" placeholder="רק במצב: בעל עסק" />
+        <div class="hint">רגיל — וואטסאפ של בעל העסק בלי start. בוט — נשלח לבוט המרכזי 972547674814. בעל עסק — נשלח למספר בעל העסק עם start_businessId.</div>
 
         <div class="row">
           <div><label>גישת בעל עסק</label><select id="ownerAccess"><option value="false">סגורה — רק אני מנהל</option><option value="true">פתוחה — הלקוח יכול לערוך</option></select></div>
@@ -406,6 +407,7 @@
     const db = firebase.firestore();
 
     const COLLECTION = "businessSettings";
+    const CENTRAL_BOT_WHATSAPP_NUMBER = "972547674814";
     const APPOINTMENTS_COLLECTION = "appointments";
     const APP_BASE_URL = "https://galhadad-app.github.io/Master-B/index.html";
 
@@ -435,12 +437,13 @@
     }
 
     function whatsappBotModeForBusiness(b){
-      const explicit = String(b?.whatsappBotMode || "").toLowerCase();
-      if(explicit === "off") return "off";
-      if(explicit === "private" || explicit === "central") return "private";
+      const explicit = String(b?.whatsappBotMode || b?.whatsappMode || "").toLowerCase();
+      if(explicit === "off" || explicit === "regular" || explicit === "normal") return "off";
+      if(explicit === "central" || explicit === "bot") return "central";
+      if(explicit === "private" || explicit === "owner") return "private";
 
       const legacyEnabled = boolValue(b?.whatsappEnabled, boolValue(b?.botEnabled, false));
-      return legacyEnabled ? "private" : "off";
+      return legacyEnabled ? "central" : "off";
     }
 
     function whatsappEnabledForBusiness(b){
@@ -448,13 +451,14 @@
     }
 
     function whatsappModeForBusiness(b){
-      return whatsappBotModeForBusiness(b) === "private" ? "private" : "off";
+      return whatsappBotModeForBusiness(b);
     }
 
     function whatsappModeLabel(b){
       const mode = whatsappBotModeForBusiness(b);
-      if(mode === "off") return "ללא שירות וואטסאפ";
-      return "פעיל על מספר בעל העסק";
+      if(mode === "central") return "בוט";
+      if(mode === "private") return "בעל עסק";
+      return "רגיל";
     }
 
     function ownerAccessForBusiness(b){
@@ -521,9 +525,11 @@
     function html(v){return String(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
     function js(v){return String(v||"").replace(/\\/g,"\\\\").replace(/'/g,"\\'")}
     function appLink(id){return APP_BASE_URL+"?business="+encodeURIComponent(id)}
-    function waLink(id,phone,serviceActive=false){
-      const base = "https://wa.me/"+phone;
-      return serviceActive ? base+"?text="+encodeURIComponent("start_"+id) : base;
+    function waLink(id,phone,mode="off"){
+      const currentMode = String(mode || "off").toLowerCase();
+      const target = currentMode === "central" ? CENTRAL_BOT_WHATSAPP_NUMBER : phone;
+      const base = "https://wa.me/"+target;
+      return currentMode === "central" || currentMode === "private" ? base+"?text="+encodeURIComponent("start_"+id) : base;
     }
     function isBusinessFrozen(b){return b && (b.isFrozen === true || b.appFrozen === true || b.active === false || b.status === "frozen")}
     function frozenLabel(b){return isBusinessFrozen(b) ? "מוקפא" : "פעיל"}
@@ -965,7 +971,8 @@
       const businessName=el.businessName.value.trim();
       const businessId=cleanId(el.businessId.value);
       const whatsappNumber=cleanPhone(el.whatsappNumber.value);
-      const whatsappBotMode=String(el.whatsappBotMode.value||"off").toLowerCase() === "private" ? "private" : "off";
+      const selectedWhatsappMode=String(el.whatsappBotMode.value||"off").toLowerCase();
+      const whatsappBotMode=["off","central","private"].includes(selectedWhatsappMode) ? selectedWhatsappMode : "off";
       const whatsappMode=whatsappBotMode;
       const whatsappPhoneNumberId=String(el.whatsappPhoneNumberId.value||"").trim();
       const whatsappAccessToken=String(el.whatsappAccessToken.value||"").trim();
@@ -980,7 +987,7 @@
       if(!businessName){showToast("חסר שם עסק",true);return}
       if(!businessId){showToast("חסר businessId תקין",true);return}
       if(!validPhone(whatsappNumber)){showToast("מספר וואטסאפ חייב להתחיל ב־972 ולהיות 12 ספרות",true);return}
-      if(whatsappBotMode === "private" && !whatsappPhoneNumberId){showToast("בשירות וואטסאפ פעיל חייבים למלא Phone Number ID",true);return}
+      if(whatsappBotMode === "private" && !whatsappPhoneNumberId){showToast("במצב בעל עסק חייבים למלא Phone Number ID",true);return}
 
       el.saveBtn.disabled=true;
       el.saveStatus.textContent="שומר ל־businessSettings...";
@@ -997,6 +1004,8 @@
           name:businessName,
           whatsappNumber,
           phone:whatsappNumber,
+          centralBotNumber:CENTRAL_BOT_WHATSAPP_NUMBER,
+          botWhatsappNumber:CENTRAL_BOT_WHATSAPP_NUMBER,
           whatsappBotMode,
           whatsappMode,
           whatsappPhoneNumberId,
@@ -1008,10 +1017,10 @@
           waBotEnabled:whatsappEnabled,
           ownerAccess,
           clientOwnerAccess:ownerAccess,
-          plan:whatsappEnabled ? "whatsapp-private" : "basic",
+          plan:whatsappBotMode === "central" ? "whatsapp-central" : (whatsappBotMode === "private" ? "whatsapp-private" : "basic"),
           ownerCode,
           appUrl:appLink(businessId),
-          whatsappUrl:waLink(businessId,whatsappNumber,whatsappEnabled),
+          whatsappUrl:waLink(businessId,whatsappNumber,whatsappBotMode),
           updatedAtMs:now,
           updatedAt:firebase.firestore.FieldValue.serverTimestamp()
         };
@@ -1076,7 +1085,7 @@
       const b=businesses.find(x=>x.id===id);
       if(!b) return;
       const current=whatsappBotModeForBusiness(b);
-      const next=current === "off" ? "private" : "off";
+      const next=current === "off" ? "central" : "off";
       try{
         await db.collection(COLLECTION).doc(id).set({
           whatsappBotMode:next,
@@ -1085,11 +1094,11 @@
           whatsappBotEnabled:next !== "off",
           botEnabled:next !== "off",
           waBotEnabled:next !== "off",
-          plan:next === "off" ? "basic" : "whatsapp-private",
+          plan:next === "off" ? "basic" : "whatsapp-central",
           updatedAtMs:Date.now(),
           updatedAt:firebase.firestore.FieldValue.serverTimestamp()
         },{merge:true});
-        showToast(next === "off" ? "שירות הוואטסאפ כובה" : "שירות הוואטסאפ הופעל על מספר בעל העסק");
+        showToast(next === "off" ? "שירות הוואטסאפ כובה" : "שירות הוואטסאפ הופעל דרך הבוט המרכזי");
       }catch(err){
         console.error(err);
         showToast("עדכון וואטסאפ נכשל",true);
@@ -1141,16 +1150,17 @@
       const name=b.businessName||b.name||id;
       const phone=cleanPhone(b.whatsappNumber||b.phone||"");
       const whatsappOn=whatsappEnabledForBusiness(b);
+      const whatsappMode=whatsappBotModeForBusiness(b);
       const ownerOpen=ownerAccessForBusiness(b);
       const app=appLink(id);
-      const wa=validPhone(phone)?waLink(id,phone,whatsappOn):"מספר וואטסאפ לא תקין";
+      const wa=validPhone(phone)?waLink(id,phone,whatsappMode):"מספר וואטסאפ לא תקין";
       const badgeClass=whatsappOn ? "premium" : "";
       el.businessDetails.innerHTML=`
         <div class="detail-card">
           <div class="business-top">
             <div>
               <div class="business-title">${html(name)}</div>
-              <div class="meta">ID: ${html(id)}<br>וואטסאפ: ${html(phone||"-")}<br>מצב וואטסאפ: ${html(whatsappModeLabel(b))}<br>Phone Number ID: ${html(b.whatsappPhoneNumberId||b.phoneNumberId||"-")}<br>שירות וואטסאפ: ${whatsappOn ? "פעיל" : "כבוי"}<br>גישת בעל עסק: ${ownerOpen ? "פתוחה" : "סגורה"}<br>קוד בעל עסק: ${html(b.ownerCode||"-")}<br>תאריך פתיחה: ${html(businessCreatedDate(b))}</div>
+              <div class="meta">ID: ${html(id)}<br>וואטסאפ: ${html(phone||"-")}<br>מצב וואטסאפ: ${html(whatsappModeLabel(b))}<br>Phone Number ID: ${html(b.whatsappPhoneNumberId||b.phoneNumberId||"-")}<br>שירות וואטסאפ: ${whatsappOn ? "פעיל" : "כבוי"}${whatsappMode === "central" ? `<br>מספר בוט מרכזי: ${html(CENTRAL_BOT_WHATSAPP_NUMBER)}` : ``}<br>גישת בעל עסק: ${ownerOpen ? "פתוחה" : "סגורה"}<br>קוד בעל עסק: ${html(b.ownerCode||"-")}<br>תאריך פתיחה: ${html(businessCreatedDate(b))}</div>
             </div>
             <div class="business-badges"><span class="badge ${badgeClass}">${whatsappOn ? "וואטסאפ: "+whatsappModeLabel(b) : "אפליקציה בלבד"}</span><span class="badge ${ownerOpen ? "pro" : ""}">${ownerOpen ? "גישה פתוחה" : "שליטה אצלך"}</span>${isBusinessFrozen(b) ? `<span class="badge frozen">מוקפא</span>` : ``}</div>
           </div>
