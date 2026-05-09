@@ -131,29 +131,92 @@ app.post("/waitlist/notify", async (req, res) => {
   try {
     const body = req.body || {};
     const businessId = cleanBusinessId(body.businessId || "");
+    const businessName = String(body.businessName || "").trim();
     const date = String(body.date || "").trim();
     const time = String(body.time || "").trim();
+    // מקור אמת אחד: השרת מחפש בעצמו את רשימת ההמתנה לפי businessId + date.
+    // לא מקבלים יותר entries/message/phone מהאפליקציה, כדי למנוע שליחה לבוט/בעל העסק בטעות.
 
     if (!businessId || !date || !isValidTime(time)) {
       return res.status(400).json({ ok: false, error: "missing_business_date_or_time" });
     }
 
     const business = await getBusinessSettings(businessId);
-    if (!business) {
-      return res.status(404).json({ ok: false, error: "business_not_found" });
+    if (isWhatsappBotDisabled(business)) {
+      return res.status(200).json({
+        ok: true,
+        sent: 0,
+        failed: 0,
+        totalRecipients: 0,
+        message: "whatsapp_bot_disabled",
+      });
     }
 
-    // מקור אמת אחד בלבד: לא מקבלים מהאפליקציה entries / phone / message.
-    // השרת מחפש לבד את רשימת ההמתנה ושולח רק ל-customerPhone.
-    const result = await notifyWaitlistForFreedSlot(business, date, time);
+    const finalBusinessName = businessName || business?.businessName || business?.name || "העסק";
+
+    const candidates = await getWaitingEntriesForDate(businessId, date);
+
+    const waiting = candidates
+      .map((entry) => normalizeWaitlistEntry(entry))
+      .filter((entry) => normalizePhone(entry.phone))
+      .filter((entry) => String(entry.status || "ממתין") === "ממתין");
+
+    if (!waiting.length) {
+      return res.status(200).json({ ok: true, sent: 0, failed: 0, totalRecipients: 0, message: "no_waiting_entries" });
+    }
+
+    const offerToken = createClaimToken();
+    let sent = 0;
+    let failed = 0;
+    const results = [];
+
+    for (const entry of waiting) {
+      try {
+        const phone = getWaitlistRecipientPhone(entry, business);
+        if (!phone) throw new Error("invalid_waitlist_recipient");
+
+        const waitlistId = entry.id || entry.waitlistId || "";
+        const claimToken = entry.claimToken || createClaimToken();
+        const claimUrl = buildClaimUrl({ claimToken, offerToken, businessId }, time);
+
+        if (waitlistId) {
+          await db.collection(WAITLIST_COLLECTION).doc(waitlistId).set(
+            {
+              offeredTime: time,
+              offerToken,
+              claimToken,
+              notifiedAtMs: Date.now(),
+              notifiedAt: admin.firestore.FieldValue.serverTimestamp(),
+              updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
+
+        const message = buildWaitlistMessage({
+          name: entry.firstName || entry.name || "",
+          businessName: finalBusinessName,
+          date,
+          time,
+          claimUrl,
+        });
+
+        const apiResult = await sendWhatsAppMessage(phone, message, { business });
+        sent += 1;
+        results.push({ phone, ok: true, claimUrl, messageId: apiResult?.messages?.[0]?.id || "" });
+      } catch (err) {
+        failed += 1;
+        results.push({ phone: normalizePhone(entry.phone), ok: false, error: getErrorPayload(err) });
+        console.error("❌ Waitlist notify failed:", getErrorPayload(err));
+      }
+    }
 
     return res.status(200).json({
-      ok: Number(result.sent || 0) > 0,
-      sent: Number(result.sent || 0),
-      failed: Number(result.failed || 0),
-      totalRecipients: Number(result.total || 0),
-      message: result.message || "",
-      results: result.results || [],
+      ok: sent > 0,
+      sent,
+      failed,
+      totalRecipients: waiting.length,
+      results,
     });
   } catch (err) {
     console.error("waitlist/notify error:", getErrorPayload(err));
@@ -552,7 +615,6 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
     const offerToken = createClaimToken();
     let sent = 0;
     let failed = 0;
-    const results = [];
 
     for (const entry of waiting) {
       try {
@@ -582,12 +644,10 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
           claimUrl,
         });
 
-        const apiResult = await sendWhatsAppMessage(phone, message, { business });
+        await sendWhatsAppMessage(phone, message, { business });
         sent += 1;
-        results.push({ phone, ok: true, messageId: apiResult?.messages?.[0]?.id || "", claimUrl });
       } catch (err) {
         failed += 1;
-        results.push({ waitlistId: entry.id || entry.waitlistId || "", ok: false, error: getErrorPayload(err) });
         console.error("❌ Auto waitlist message failed:", getErrorPayload(err));
       }
     }
@@ -601,7 +661,7 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
       failed,
     });
 
-    return { sent, failed, total: waiting.length, results };
+    return { sent, failed, total: waiting.length };
   } catch (err) {
     console.error("notifyWaitlistForFreedSlot error:", getErrorPayload(err));
     return { sent: 0, failed: 0, error: getErrorPayload(err) };
@@ -626,7 +686,7 @@ function normalizeWaitlistEntry(entry) {
     String(entry.name || "").trim() ||
     `${String(entry.firstName || "").trim()} ${String(entry.lastName || "").trim()}`.trim();
 
-  const explicitCustomer =
+  const customerSource =
     entry.customerWhatsapp ||
     entry.clientWhatsapp ||
     entry.customerPhone ||
@@ -637,8 +697,8 @@ function normalizeWaitlistEntry(entry) {
     entry.phone ||
     "";
 
-  const customerIntl = toWhatsAppRecipient(explicitCustomer);
-  const displayPhone = whatsappToIsraeliPhone(customerIntl || explicitCustomer);
+  const customerIntl = toWhatsAppRecipient(customerSource);
+  const displayPhone = whatsappToIsraeliPhone(customerIntl || customerSource);
 
   return {
     ...entry,
@@ -737,11 +797,10 @@ function getWaitlistRecipientPhone(entry = {}, business = {}) {
 
 function buildClaimUrl(entry, time) {
   const url = new URL(APP_BASE_URL);
-  const businessId = cleanBusinessId(entry.businessId || entry.businessID || entry.biz || "");
-  if (businessId) url.searchParams.set("business", businessId);
-  url.searchParams.set("claimWaitlist", String(entry.claimToken || ""));
-  url.searchParams.set("time", String(time || ""));
-  if (entry.offerToken) url.searchParams.set("offer", String(entry.offerToken));
+  if (entry.businessId) url.searchParams.set("business", entry.businessId);
+  url.searchParams.set("claimWaitlist", entry.claimToken);
+  url.searchParams.set("time", time);
+  if (entry.offerToken) url.searchParams.set("offer", entry.offerToken);
   return url.toString();
 }
 
