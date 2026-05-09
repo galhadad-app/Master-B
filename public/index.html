@@ -2465,7 +2465,27 @@ body.business-frozen{overflow:hidden;}
     function openOwnerWaitlistWhatsapp(entryId){ const entry = waitlistEntries.find(item => item.id === entryId); if(!entry) return showToast('לא נמצא ממתין לשליחה.', true); const href = whatsappLinkFor(entry.phone, buildOwnerWaitlistWhatsappMessage(entry)); const opened = window.open(href, '_blank', 'noopener'); if(!opened) window.location.href = href; }
     async function deleteWaitlistEntry(entryId){ const entry = waitlistEntries.find(item => item.id === entryId); if(!entry) return showToast('לא נמצא ממתין למחיקה.', true); const ok = confirm(`למחוק את ${entry.name || 'הלקוח'} מרשימת ההמתנה?`); if(!ok) return; try{ await db.collection(WAITLIST_COLLECTION).doc(entryId).delete(); showToast('נמחק מרשימת ההמתנה.'); }catch(err){ console.error(err); showToast('שגיאה במחיקת הממתין.', true); } }
     function whatsappLinkFor(phone, text){ const international = toWhatsappPhone(phone); return `https://wa.me/${international}?text=${encodeURIComponent(text)}`; }
-    async function createWaitlistEntry(payload){ const claimToken = createClaimToken(); const phoneIntl = toWhatsappPhone(payload.phone || ''); const phoneDisplay = toIsraeliDisplayPhone(payload.phone || ''); await db.collection(WAITLIST_COLLECTION).add({ ...payload, phone: phoneIntl, phoneDisplay, customerPhone: phoneDisplay, clientPhone: phoneDisplay, customerWhatsapp: phoneIntl, clientWhatsapp: phoneIntl, claimToken, status:'ממתין', businessId: currentBusinessSettings.businessId, businessName: currentBusinessSettings.businessName, createdAtMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
+    async function createWaitlistEntry(payload){
+      const claimToken = createClaimToken();
+      const phoneDisplay = toIsraeliDisplayPhone(payload.phone || '');
+      const phoneIntl = toWhatsappPhone(phoneDisplay || payload.phone || '');
+      await db.collection(WAITLIST_COLLECTION).add({
+        ...payload,
+        // מקור אמת נקי: השרת ישלח תמיד רק ל-customerPhone.
+        phone: phoneDisplay,
+        phoneDisplay,
+        customerPhone: phoneDisplay,
+        clientPhone: phoneDisplay,
+        customerWhatsapp: phoneIntl,
+        clientWhatsapp: phoneIntl,
+        claimToken,
+        status:'ממתין',
+        businessId: currentBusinessSettings.businessId,
+        businessName: currentBusinessSettings.businessName,
+        createdAtMs: Date.now(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
     async function updateWaitlistEntry(id, updates){ if(!id) return; await db.collection(WAITLIST_COLLECTION).doc(id).update({ ...updates, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function closeMatchingWaitlistEntries(phone, dateKey, bookedTime){
       const normalizedPhone = normalizePhone(phone);
@@ -2506,29 +2526,12 @@ body.business-frozen{overflow:hidden;}
     async function sendWaitlistAutoWhatsapp(entries, dateKey, time, options = {}){
       const apiUrl = getWaitlistAutoNotifyApiUrl();
       const quiet = !!options.quiet;
-      if(!apiUrl || !entries.length) return false;
+      if(!apiUrl) return false;
       const payload = {
         businessId: currentBusinessSettings.businessId,
         businessName: currentBusinessSettings.businessName || '',
         date: dateKey,
-        time,
-        entries: entries.map(entry => ({
-          id: entry.id,
-          collectionName: WAITLIST_COLLECTION,
-          businessId: currentBusinessSettings.businessId,
-          name: entry.name || '',
-          firstName: entry.firstName || '',
-          lastName: entry.lastName || '',
-          phone: toWhatsappPhone(entry.phone || ''),
-          phoneDisplay: entry.phoneDisplay || toIsraeliDisplayPhone(entry.phone || ''),
-          customerPhone: entry.customerPhone || entry.phoneDisplay || toIsraeliDisplayPhone(entry.phone || ''),
-          clientPhone: entry.clientPhone || entry.customerPhone || entry.phoneDisplay || toIsraeliDisplayPhone(entry.phone || ''),
-          customerWhatsapp: entry.customerWhatsapp || toWhatsappPhone(entry.phone || ''),
-          service: entry.service || '',
-          status: entry.status || 'ממתין',
-          message: buildWaitlistWhatsappMessage(entry, dateKey, time),
-          claimUrl: buildClaimUrl(entry, time)
-        }))
+        time
       };
       try{
         const res = await fetch(apiUrl, {
@@ -2541,52 +2544,30 @@ body.business-frozen{overflow:hidden;}
         const sent = Number(data.sent || 0);
         const failed = Number(data.failed || 0);
         const total = Number(data.totalRecipients || 0);
-        if(sent > 0){
-          return true;
-        }
+        if(sent > 0) return true;
         console.warn('Automatic waitlist WhatsApp notification returned without sent messages:', data);
-        if(total > 0 && failed > 0){
-          if(!quiet) showToast('השרת קיבל את רשימת ההמתנה, אבל וואטסאפ לא שלח בפועל. בדוק Token/Recipient במסוף Meta.', true);
-        }else{
-          if(!quiet) showToast('לא נשלחה הודעת וואטסאפ בפועל לרשימת ההמתנה.', true);
+        if(!quiet){
+          if(total > 0 && failed > 0) showToast('נמצאו ממתינים, אבל וואטסאפ לא שלח בפועל. בדוק Token/מספרים בשרת.', true);
+          else showToast('לא נמצאו ממתינים תקינים לשליחת הודעה.', true);
         }
         return false;
       }catch(err){
         console.warn('Automatic waitlist WhatsApp notification failed:', err);
+        if(!quiet) showToast('השליחה האוטומטית לא הצליחה. בדוק שהשרת של הווצאפ פעיל ומוגדר.', true);
         return false;
       }
     }
 
     async function notifyWaitlistForSlot(dateKey, time, options = {}){
       const source = options.source || 'owner';
-
-      // קוראים ישירות מ-Firestore כדי לא להיתקע על מצב מקומי ישן אחרי ביטול תור.
-      let waiting = await fetchWaitingEntriesForDate(dateKey);
-      if(!waiting.length) waiting = getWaitingEntriesForDate(dateKey);
-
-      if(!waiting.length){
-        if(source === 'owner') showToast('אין לקוחות ברשימת המתנה ליום הזה.');
-        return false;
-      }
-
-      const offerToken = createClaimToken();
-      const offered = waiting.map(entry => ({ ...entry, offerToken }));
-      await Promise.all(waiting.map(entry =>
-        updateWaitlistEntry(entry.id, {
-          offeredTime: time,
-          offerToken,
-          notifiedAtMs: Date.now()
-        }).catch(console.error)
-      ));
-
-      const sentAutomatically = await sendWaitlistAutoWhatsapp(offered, dateKey, time, { quiet:false });
+      // זרימה נקייה: האפליקציה לא בונה הודעות ולא שולחת נמענים.
+      // היא רק מודיעה לשרת שהתפנה תור; השרת מחפש לבד את הממתינים ושולח ל-customerPhone.
+      const sentAutomatically = await sendWaitlistAutoWhatsapp([], dateKey, time, { quiet:false });
       if(sentAutomatically){
-        showToast(`נשלחה הודעה אוטומטית ל־${offered.length} ממתינים.`);
+        showToast('נשלחה הודעה אוטומטית לממתינים.');
         return true;
       }
-
-      // אין פתיחת "שלח לכולם" אוטומטית — אם זה מגיע לכאן, השרת לא שלח בפועל.
-      showToast('השליחה האוטומטית לא הצליחה. בדוק שהשרת של הווצאפ פעיל ומוגדר.', true);
+      if(source === 'owner') showToast('לא נשלחה הודעת וואטסאפ בפועל לרשימת ההמתנה.', true);
       return false;
     }
     function openNotifyWaitlistModal(entries, dateKey, time){
