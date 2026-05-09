@@ -2454,6 +2454,7 @@ body.business-frozen{overflow:hidden;}
         currentUrl.includes('/downloads/');
       const baseUrl = isLocalFile ? liveAppUrl : currentUrl;
       const url = new URL(baseUrl);
+      url.searchParams.set('business', currentBusinessSettings.businessId);
       url.searchParams.set('claimWaitlist', entry.claimToken);
       url.searchParams.set('time', time);
       if(entry.offerToken) url.searchParams.set('offer', entry.offerToken);
@@ -2464,7 +2465,7 @@ body.business-frozen{overflow:hidden;}
     function openOwnerWaitlistWhatsapp(entryId){ const entry = waitlistEntries.find(item => item.id === entryId); if(!entry) return showToast('לא נמצא ממתין לשליחה.', true); const href = whatsappLinkFor(entry.phone, buildOwnerWaitlistWhatsappMessage(entry)); const opened = window.open(href, '_blank', 'noopener'); if(!opened) window.location.href = href; }
     async function deleteWaitlistEntry(entryId){ const entry = waitlistEntries.find(item => item.id === entryId); if(!entry) return showToast('לא נמצא ממתין למחיקה.', true); const ok = confirm(`למחוק את ${entry.name || 'הלקוח'} מרשימת ההמתנה?`); if(!ok) return; try{ await db.collection(WAITLIST_COLLECTION).doc(entryId).delete(); showToast('נמחק מרשימת ההמתנה.'); }catch(err){ console.error(err); showToast('שגיאה במחיקת הממתין.', true); } }
     function whatsappLinkFor(phone, text){ const international = toWhatsappPhone(phone); return `https://wa.me/${international}?text=${encodeURIComponent(text)}`; }
-    async function createWaitlistEntry(payload){ const claimToken = createClaimToken(); const phoneIntl = toWhatsappPhone(payload.phone || ''); const phoneDisplay = toIsraeliDisplayPhone(payload.phone || ''); await db.collection(WAITLIST_COLLECTION).add({ ...payload, phone: phoneIntl, phoneDisplay, customerPhone: phoneDisplay, clientPhone: phoneDisplay, customerWhatsapp: phoneIntl, claimToken, status:'ממתין', businessId: currentBusinessSettings.businessId, businessName: currentBusinessSettings.businessName, createdAtMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
+    async function createWaitlistEntry(payload){ const claimToken = createClaimToken(); const phoneIntl = toWhatsappPhone(payload.phone || ''); const phoneDisplay = toIsraeliDisplayPhone(payload.phone || ''); await db.collection(WAITLIST_COLLECTION).add({ ...payload, phone: phoneIntl, phoneDisplay, customerPhone: phoneDisplay, clientPhone: phoneDisplay, customerWhatsapp: phoneIntl, clientWhatsapp: phoneIntl, claimToken, status:'ממתין', businessId: currentBusinessSettings.businessId, businessName: currentBusinessSettings.businessName, createdAtMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function updateWaitlistEntry(id, updates){ if(!id) return; await db.collection(WAITLIST_COLLECTION).doc(id).update({ ...updates, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function closeMatchingWaitlistEntries(phone, dateKey, bookedTime){
       const normalizedPhone = normalizePhone(phone);
