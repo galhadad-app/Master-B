@@ -143,7 +143,10 @@ app.post("/waitlist/notify", async (req, res) => {
       return res.status(404).json({ ok: false, error: "business_not_found" });
     }
 
+    // מקור אמת אחד בלבד: לא מקבלים מהאפליקציה entries / phone / message.
+    // השרת מחפש לבד את רשימת ההמתנה ושולח רק ל-customerPhone.
     const result = await notifyWaitlistForFreedSlot(business, date, time);
+
     return res.status(200).json({
       ok: Number(result.sent || 0) > 0,
       sent: Number(result.sent || 0),
@@ -530,20 +533,20 @@ async function handleCancelConfirm(from, text, business, session) {
 // =======================
 async function notifyWaitlistForFreedSlot(business, date, time) {
   try {
-    if (!business?.businessId || !date || !isValidTime(time)) return { sent: 0, failed: 0, total: 0, message: "missing_business_date_or_time" };
+    if (!business?.businessId || !date || !isValidTime(time)) return { sent: 0, failed: 0 };
     if (isWhatsappBotDisabled(business)) {
       console.log("⏸️ Waitlist notify skipped because WhatsApp bot is disabled", {
         businessId: business.businessId,
         date,
         time,
       });
-      return { sent: 0, failed: 0, total: 0, disabled: true, message: "whatsapp_bot_disabled" };
+      return { sent: 0, failed: 0, disabled: true };
     }
 
     const waiting = await getWaitingEntriesForDate(business.businessId, date);
     if (!waiting.length) {
       console.log("ℹ️ No waitlist entries for freed slot", { businessId: business.businessId, date, time });
-      return { sent: 0, failed: 0, total: 0, message: "no_waiting_entries" };
+      return { sent: 0, failed: 0 };
     }
 
     const offerToken = createClaimToken();
@@ -554,7 +557,7 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
     for (const entry of waiting) {
       try {
         const phone = getWaitlistRecipientPhone(entry, business);
-        if (!phone) throw new Error("invalid_waitlist_customer_phone");
+        if (!phone) throw new Error("invalid_waitlist_recipient");
 
         const claimToken = entry.claimToken || createClaimToken();
         const claimUrl = buildClaimUrl({ claimToken, offerToken, businessId: business.businessId }, time);
@@ -581,10 +584,10 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
 
         const apiResult = await sendWhatsAppMessage(phone, message, { business });
         sent += 1;
-        results.push({ waitlistId: entry.id, phone, ok: true, messageId: apiResult?.messages?.[0]?.id || "" });
+        results.push({ phone, ok: true, messageId: apiResult?.messages?.[0]?.id || "", claimUrl });
       } catch (err) {
         failed += 1;
-        results.push({ waitlistId: entry.id || entry.waitlistId || "", phone: entry.customerPhone || "", ok: false, error: getErrorPayload(err) });
+        results.push({ waitlistId: entry.id || entry.waitlistId || "", ok: false, error: getErrorPayload(err) });
         console.error("❌ Auto waitlist message failed:", getErrorPayload(err));
       }
     }
@@ -601,7 +604,7 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
     return { sent, failed, total: waiting.length, results };
   } catch (err) {
     console.error("notifyWaitlistForFreedSlot error:", getErrorPayload(err));
-    return { sent: 0, failed: 0, total: 0, error: getErrorPayload(err) };
+    return { sent: 0, failed: 0, error: getErrorPayload(err) };
   }
 }
 
@@ -624,12 +627,14 @@ function normalizeWaitlistEntry(entry) {
     `${String(entry.firstName || "").trim()} ${String(entry.lastName || "").trim()}`.trim();
 
   const explicitCustomer =
-    entry.customerPhone ||
     entry.customerWhatsapp ||
-    entry.clientPhone ||
     entry.clientWhatsapp ||
+    entry.customerPhone ||
+    entry.clientPhone ||
     entry.phoneDisplay ||
     entry.displayPhone ||
+    entry.mobile ||
+    entry.phone ||
     "";
 
   const customerIntl = toWhatsAppRecipient(explicitCustomer);
@@ -641,8 +646,7 @@ function normalizeWaitlistEntry(entry) {
     name: fullName,
     firstName: String(entry.firstName || "").trim(),
     lastName: String(entry.lastName || "").trim(),
-    // נקי: phone נשאר לתצוגה/תאימות בלבד. שליחה מתבצעת רק דרך customerPhone.
-    phone: displayPhone,
+    phone: customerIntl,
     phoneDisplay: displayPhone,
     customerPhone: customerIntl,
     clientPhone: customerIntl,
@@ -655,6 +659,7 @@ function normalizeWaitlistEntry(entry) {
     createdAtMs: Number(entry.createdAtMs || 0),
   };
 }
+
 
 function getCentralBotWhatsappNumber() {
   return normalizePhone(process.env.CENTRAL_BOT_WHATSAPP_NUMBER || process.env.BOT_WHATSAPP_NUMBER || "972547674814");
@@ -677,18 +682,23 @@ function getProtectedWhatsappNumbers(business = {}) {
 
 function getWaitlistRecipientPhone(entry = {}, business = {}) {
   const protectedNumbers = getProtectedWhatsappNumbers(business);
-  // לא משתמשים יותר ב-entry.phone כנמען. מקור האמת היחיד הוא customerPhone/customerWhatsapp.
+
   const candidates = [
-    entry.customerPhone,
     entry.customerWhatsapp,
-    entry.clientPhone,
     entry.clientWhatsapp,
+    entry.customerPhone,
+    entry.clientPhone,
+    entry.phoneDisplay,
+    entry.displayPhone,
+    entry.mobile,
+    entry.phone,
   ];
 
   for (const candidate of candidates) {
     const normalized = toWhatsAppRecipient(candidate);
     if (!normalized) continue;
 
+    // Never send a waitlist offer to the bot number or the business contact number.
     if (protectedNumbers.has(normalized)) {
       console.warn("⚠️ Skipping protected waitlist recipient number", {
         waitlistId: entry.id || entry.waitlistId || "",
@@ -717,6 +727,7 @@ function getWaitlistRecipientPhone(entry = {}, business = {}) {
   console.warn("⚠️ No valid customer recipient found for waitlist entry", {
     waitlistId: entry.id || entry.waitlistId || "",
     businessId: business.businessId || business.id || "",
+    rawPhone: entry.phone || "",
     phoneDisplay: entry.phoneDisplay || "",
     customerPhone: entry.customerPhone || "",
     customerWhatsapp: entry.customerWhatsapp || "",
@@ -726,10 +737,11 @@ function getWaitlistRecipientPhone(entry = {}, business = {}) {
 
 function buildClaimUrl(entry, time) {
   const url = new URL(APP_BASE_URL);
-  if (entry.businessId) url.searchParams.set("business", entry.businessId);
-  url.searchParams.set("claimWaitlist", entry.claimToken);
-  url.searchParams.set("time", time);
-  if (entry.offerToken) url.searchParams.set("offer", entry.offerToken);
+  const businessId = cleanBusinessId(entry.businessId || entry.businessID || entry.biz || "");
+  if (businessId) url.searchParams.set("business", businessId);
+  url.searchParams.set("claimWaitlist", String(entry.claimToken || ""));
+  url.searchParams.set("time", String(time || ""));
+  if (entry.offerToken) url.searchParams.set("offer", String(entry.offerToken));
   return url.toString();
 }
 
