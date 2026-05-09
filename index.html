@@ -2412,7 +2412,31 @@ body.business-frozen{overflow:hidden;}
       });
     }
 
-    function normalizeWaitlistRecord(raw = {}, id = ''){ const displayPhone = formatDisplayPhone(raw.phoneDisplay || raw.displayPhone || raw.customerPhone || raw.clientPhone || raw.phone || ''); return { id, businessId: raw.businessId || '', name: raw.name || '', firstName: raw.firstName || '', lastName: raw.lastName || '', phone: displayPhone, phoneDisplay: displayPhone, customerPhone: displayPhone, clientPhone: displayPhone, customerWhatsapp: toWhatsappPhone(raw.customerWhatsapp || raw.clientWhatsapp || raw.phone || displayPhone), service: raw.service || '', date: raw.date || '', status: raw.status || 'ממתין', claimToken: raw.claimToken || '', offerToken: raw.offerToken || '', offeredTime: raw.offeredTime || '', createdAtMs: raw.createdAtMs || 0 }; }
+    function normalizeWaitlistRecord(raw = {}, id = ''){
+      const customerSource = raw.customerPhone || raw.clientPhone || raw.phoneDisplay || raw.displayPhone || raw.phone || '';
+      const displayPhone = formatDisplayPhone(customerSource);
+      const customerWhatsapp = toWhatsappPhone(raw.customerWhatsapp || raw.clientWhatsapp || displayPhone || customerSource || '');
+      return {
+        id,
+        businessId: raw.businessId || '',
+        name: raw.name || '',
+        firstName: raw.firstName || '',
+        lastName: raw.lastName || '',
+        phone: displayPhone,
+        phoneDisplay: displayPhone,
+        customerPhone: displayPhone,
+        clientPhone: displayPhone,
+        customerWhatsapp,
+        clientWhatsapp: customerWhatsapp,
+        service: raw.service || '',
+        date: raw.date || '',
+        status: raw.status || 'ממתין',
+        claimToken: raw.claimToken || '',
+        offerToken: raw.offerToken || '',
+        offeredTime: raw.offeredTime || '',
+        createdAtMs: raw.createdAtMs || 0
+      };
+    }
     function createClaimToken(){ return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`; }
     function getWaitingEntriesForDate(dateKey){
       return waitlistEntries
@@ -2465,7 +2489,31 @@ body.business-frozen{overflow:hidden;}
     function openOwnerWaitlistWhatsapp(entryId){ const entry = waitlistEntries.find(item => item.id === entryId); if(!entry) return showToast('לא נמצא ממתין לשליחה.', true); const href = whatsappLinkFor(entry.phone, buildOwnerWaitlistWhatsappMessage(entry)); const opened = window.open(href, '_blank', 'noopener'); if(!opened) window.location.href = href; }
     async function deleteWaitlistEntry(entryId){ const entry = waitlistEntries.find(item => item.id === entryId); if(!entry) return showToast('לא נמצא ממתין למחיקה.', true); const ok = confirm(`למחוק את ${entry.name || 'הלקוח'} מרשימת ההמתנה?`); if(!ok) return; try{ await db.collection(WAITLIST_COLLECTION).doc(entryId).delete(); showToast('נמחק מרשימת ההמתנה.'); }catch(err){ console.error(err); showToast('שגיאה במחיקת הממתין.', true); } }
     function whatsappLinkFor(phone, text){ const international = toWhatsappPhone(phone); return `https://wa.me/${international}?text=${encodeURIComponent(text)}`; }
-    async function createWaitlistEntry(payload){ const claimToken = createClaimToken(); const phoneIntl = toWhatsappPhone(payload.phone || ''); const phoneDisplay = toIsraeliDisplayPhone(payload.phone || ''); await db.collection(WAITLIST_COLLECTION).add({ ...payload, phone: phoneIntl, phoneDisplay, customerPhone: phoneDisplay, clientPhone: phoneDisplay, customerWhatsapp: phoneIntl, clientWhatsapp: phoneIntl, claimToken, status:'ממתין', businessId: currentBusinessSettings.businessId, businessName: currentBusinessSettings.businessName, createdAtMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
+    async function createWaitlistEntry(payload){
+      const claimToken = createClaimToken();
+      const phoneDisplay = formatDisplayPhone(payload.phone || '');
+      const phoneIntl = toWhatsappPhone(phoneDisplay || payload.phone || '');
+      const cleanPayload = { ...payload };
+      delete cleanPayload.phone;
+      await db.collection(WAITLIST_COLLECTION).add({
+        ...cleanPayload,
+        // מקור אמת אחד ללקוח הממתין: המספר שהלקוח הקליד בטופס.
+        phone: phoneDisplay,
+        phoneDisplay,
+        customerPhone: phoneDisplay,
+        clientPhone: phoneDisplay,
+        customerWhatsapp: phoneIntl,
+        clientWhatsapp: phoneIntl,
+        claimToken,
+        offerToken:'',
+        offeredTime:'',
+        status:'ממתין',
+        businessId: currentBusinessSettings.businessId,
+        businessName: currentBusinessSettings.businessName,
+        createdAtMs: Date.now(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
     async function updateWaitlistEntry(id, updates){ if(!id) return; await db.collection(WAITLIST_COLLECTION).doc(id).update({ ...updates, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function closeMatchingWaitlistEntries(phone, dateKey, bookedTime){
       const normalizedPhone = normalizePhone(phone);
@@ -2507,15 +2555,12 @@ body.business-frozen{overflow:hidden;}
       const apiUrl = getWaitlistAutoNotifyApiUrl();
       const quiet = !!options.quiet;
       if(!apiUrl) return false;
-
-      // זרימה נקייה: האפליקציה לא שולחת רשימת נמענים, מספרי טלפון או הודעה מוכנה.
-      // השרת הוא מקור האמת: הוא מחפש לבד את הממתינים ושולח רק ל-customerPhone.
       const payload = {
         businessId: currentBusinessSettings.businessId,
+        businessName: currentBusinessSettings.businessName || '',
         date: dateKey,
         time
       };
-
       try{
         const res = await fetch(apiUrl, {
           method:'POST',
@@ -2529,9 +2574,10 @@ body.business-frozen{overflow:hidden;}
         const total = Number(data.totalRecipients || 0);
         if(sent > 0) return true;
         console.warn('Automatic waitlist WhatsApp notification returned without sent messages:', data);
-        if(!quiet){
-          if(total > 0 && failed > 0) showToast('נמצאו ממתינים, אבל וואטסאפ לא שלח בפועל. בדוק Token/מספרים בשרת.', true);
-          else showToast('לא נמצאו ממתינים תקינים לשליחת הודעה.', true);
+        if(total > 0 && failed > 0){
+          if(!quiet) showToast('השרת מצא ממתינים, אבל וואטסאפ לא שלח בפועל. בדוק Token/Recipient במסוף Meta.', true);
+        }else if(!quiet){
+          showToast('לא נמצאו ממתינים תקינים לשליחת הודעת וואטסאפ.', true);
         }
         return false;
       }catch(err){
@@ -2553,19 +2599,9 @@ body.business-frozen{overflow:hidden;}
         return false;
       }
 
-      const offerToken = createClaimToken();
-      const offered = waiting.map(entry => ({ ...entry, offerToken }));
-      await Promise.all(waiting.map(entry =>
-        updateWaitlistEntry(entry.id, {
-          offeredTime: time,
-          offerToken,
-          notifiedAtMs: Date.now()
-        }).catch(console.error)
-      ));
-
-      const sentAutomatically = await sendWaitlistAutoWhatsapp(offered, dateKey, time, { quiet:false });
+      const sentAutomatically = await sendWaitlistAutoWhatsapp(waiting, dateKey, time, { quiet:false });
       if(sentAutomatically){
-        showToast(`נשלחה הודעה אוטומטית ל־${offered.length} ממתינים.`);
+        showToast(`נשלחה הודעה אוטומטית לרשימת ההמתנה.`);
         return true;
       }
 
@@ -2673,21 +2709,37 @@ body.business-frozen{overflow:hidden;}
       if(bookBtn){ bookBtn.disabled = true; bookBtn.textContent = 'מאשר תור...'; }
 
       try{
-        const waitSnap = await db.collection(WAITLIST_COLLECTION)
+        let waitSnap = await db.collection(WAITLIST_COLLECTION)
           .where('businessId', '==', currentBusinessSettings.businessId)
           .where('claimToken', '==', token)
           .limit(1)
           .get();
+
+        // גיבוי: אם ה-business נטען באיחור/נשמר בצורה ישנה, מחפשים לפי הטוקן בלבד
+        // ואז מאמתים שה-business תואם לפני אישור התור.
+        if(waitSnap.empty){
+          waitSnap = await db.collection(WAITLIST_COLLECTION)
+            .where('claimToken', '==', token)
+            .limit(3)
+            .get();
+        }
 
         if(waitSnap.empty){
           showToast('הקישור כבר לא תקף.', true);
           return false;
         }
 
-        const waitDoc = waitSnap.docs[0];
+        const waitDoc = waitSnap.docs.find(doc => {
+          const data = doc.data() || {};
+          return !data.businessId || data.businessId === currentBusinessSettings.businessId;
+        }) || waitSnap.docs[0];
         const entry = normalizeWaitlistRecord(waitDoc.data(), waitDoc.id);
+        if(entry.businessId && entry.businessId !== currentBusinessSettings.businessId){
+          showToast('הקישור לא שייך לעסק הזה.', true);
+          return false;
+        }
         const dateKey = entry.date;
-        const phone = formatDisplayPhone(entry.phone);
+        const phone = formatDisplayPhone(entry.customerPhone || entry.phoneDisplay || entry.phone);
         const name = entry.name || `${entry.firstName || ''} ${entry.lastName || ''}`.trim() || 'לקוח מרשימת המתנה';
         const service = entry.service || getFirstServiceForWaitlist();
         saveReturningCustomerFromKnownData(entry.firstName, entry.lastName, name, phone);
@@ -2785,14 +2837,14 @@ body.business-frozen{overflow:hidden;}
             claimToken: token,
             offerToken: offerToken || '',
             waitlistId: entry.id,
-            phone: freshEntry.phone || phone || '',
+            phone: freshEntry.customerPhone || freshEntry.phoneDisplay || freshEntry.phone || phone || '',
             appointmentId: apptRef.id,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
 
           tx.set(apptRef, {
             name: freshEntry.name || name,
-            phone: freshEntry.phone || phone,
+            phone: freshEntry.customerPhone || freshEntry.phoneDisplay || freshEntry.phone || phone,
             service: freshEntry.service || service,
             date: dateKey,
             time,
@@ -3211,7 +3263,7 @@ body.business-frozen{overflow:hidden;}
       const todayKey = formatDateKey(new Date());
       body.innerHTML = rows.map(entry => {
         const dateDisplay = entry.date === todayKey ? '<span class="today-badge">היום</span>' : formatDatePrettyFromKey(entry.date);
-        const phone = formatDisplayPhone(entry.phone);
+        const phone = formatDisplayPhone(entry.customerPhone || entry.phoneDisplay || entry.phone);
         const phoneDisplay = phone ? `<a class="phone-link" href="tel:${phone}" onclick="event.stopPropagation()">${phone}</a>` : '-';
         return `<tr>
           <td>${escapeHtml(entry.name || '-')}</td>
