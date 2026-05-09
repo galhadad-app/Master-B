@@ -1641,7 +1641,6 @@ body.business-frozen{overflow:hidden;}
       .replace(/[^a-zA-Z0-9_-]/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '') || DEFAULT_BUSINESS_ID;
-    const CENTRAL_BOT_WHATSAPP_NUMBER = '972547674814';
 
     /*
       זה הלב של התבנית.
@@ -1654,12 +1653,8 @@ body.business-frozen{overflow:hidden;}
       businessTypeLabel: 'מספרה',
       ownerBadge: 'עמוד בעל העסק',
       whatsappNumber: '',
-      centralBotNumber: CENTRAL_BOT_WHATSAPP_NUMBER,
-      botWhatsappNumber: CENTRAL_BOT_WHATSAPP_NUMBER,
-      whatsappBotMode: 'off',
-      whatsappMode: 'off',
-      whatsappEnabled: false,
-      botEnabled: false,
+      whatsappEnabled: true,
+      botEnabled: true,
       ownerAccess: false,
       clientOwnerAccess: false,
       businessAddress: '',
@@ -2417,7 +2412,7 @@ body.business-frozen{overflow:hidden;}
       });
     }
 
-    function normalizeWaitlistRecord(raw = {}, id = ''){ return { id, businessId: raw.businessId || '', name: raw.name || '', firstName: raw.firstName || '', lastName: raw.lastName || '', phone: formatDisplayPhone(raw.phone || ''), service: raw.service || '', date: raw.date || '', status: raw.status || 'ממתין', claimToken: raw.claimToken || '', offerToken: raw.offerToken || '', offeredTime: raw.offeredTime || '', createdAtMs: raw.createdAtMs || 0 }; }
+    function normalizeWaitlistRecord(raw = {}, id = ''){ const displayPhone = formatDisplayPhone(raw.phoneDisplay || raw.displayPhone || raw.customerPhone || raw.clientPhone || raw.phone || ''); return { id, businessId: raw.businessId || '', name: raw.name || '', firstName: raw.firstName || '', lastName: raw.lastName || '', phone: displayPhone, phoneDisplay: displayPhone, customerPhone: displayPhone, clientPhone: displayPhone, customerWhatsapp: toWhatsappPhone(raw.customerWhatsapp || raw.clientWhatsapp || raw.phone || displayPhone), service: raw.service || '', date: raw.date || '', status: raw.status || 'ממתין', claimToken: raw.claimToken || '', offerToken: raw.offerToken || '', offeredTime: raw.offeredTime || '', createdAtMs: raw.createdAtMs || 0 }; }
     function createClaimToken(){ return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`; }
     function getWaitingEntriesForDate(dateKey){
       return waitlistEntries
@@ -2469,7 +2464,7 @@ body.business-frozen{overflow:hidden;}
     function openOwnerWaitlistWhatsapp(entryId){ const entry = waitlistEntries.find(item => item.id === entryId); if(!entry) return showToast('לא נמצא ממתין לשליחה.', true); const href = whatsappLinkFor(entry.phone, buildOwnerWaitlistWhatsappMessage(entry)); const opened = window.open(href, '_blank', 'noopener'); if(!opened) window.location.href = href; }
     async function deleteWaitlistEntry(entryId){ const entry = waitlistEntries.find(item => item.id === entryId); if(!entry) return showToast('לא נמצא ממתין למחיקה.', true); const ok = confirm(`למחוק את ${entry.name || 'הלקוח'} מרשימת ההמתנה?`); if(!ok) return; try{ await db.collection(WAITLIST_COLLECTION).doc(entryId).delete(); showToast('נמחק מרשימת ההמתנה.'); }catch(err){ console.error(err); showToast('שגיאה במחיקת הממתין.', true); } }
     function whatsappLinkFor(phone, text){ const international = toWhatsappPhone(phone); return `https://wa.me/${international}?text=${encodeURIComponent(text)}`; }
-    async function createWaitlistEntry(payload){ const claimToken = createClaimToken(); const phoneIntl = toWhatsappPhone(payload.phone || ''); const phoneDisplay = toIsraeliDisplayPhone(payload.phone || ''); await db.collection(WAITLIST_COLLECTION).add({ ...payload, phone: phoneIntl, phoneDisplay, claimToken, status:'ממתין', businessId: currentBusinessSettings.businessId, businessName: currentBusinessSettings.businessName, createdAtMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
+    async function createWaitlistEntry(payload){ const claimToken = createClaimToken(); const phoneIntl = toWhatsappPhone(payload.phone || ''); const phoneDisplay = toIsraeliDisplayPhone(payload.phone || ''); await db.collection(WAITLIST_COLLECTION).add({ ...payload, phone: phoneIntl, phoneDisplay, customerPhone: phoneDisplay, clientPhone: phoneDisplay, customerWhatsapp: phoneIntl, claimToken, status:'ממתין', businessId: currentBusinessSettings.businessId, businessName: currentBusinessSettings.businessName, createdAtMs: Date.now(), createdAt: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function updateWaitlistEntry(id, updates){ if(!id) return; await db.collection(WAITLIST_COLLECTION).doc(id).update({ ...updates, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function closeMatchingWaitlistEntries(phone, dateKey, bookedTime){
       const normalizedPhone = normalizePhone(phone);
@@ -2524,6 +2519,10 @@ body.business-frozen{overflow:hidden;}
           firstName: entry.firstName || '',
           lastName: entry.lastName || '',
           phone: toWhatsappPhone(entry.phone || ''),
+          phoneDisplay: entry.phoneDisplay || toIsraeliDisplayPhone(entry.phone || ''),
+          customerPhone: entry.customerPhone || entry.phoneDisplay || toIsraeliDisplayPhone(entry.phone || ''),
+          clientPhone: entry.clientPhone || entry.customerPhone || entry.phoneDisplay || toIsraeliDisplayPhone(entry.phone || ''),
+          customerWhatsapp: entry.customerWhatsapp || toWhatsappPhone(entry.phone || ''),
           service: entry.service || '',
           status: entry.status || 'ממתין',
           message: buildWaitlistWhatsappMessage(entry, dateKey, time),
@@ -3989,49 +3988,24 @@ body.business-frozen{overflow:hidden;}
     function playBookSound(){ const a = document.getElementById('bookSound'); if(!a) return; a.currentTime = 0; a.play().catch(()=>{}); }
 
     function getBusinessPhoneRaw(){
-      return String((currentBusinessSettings && (currentBusinessSettings.phone || currentBusinessSettings.businessPhone || currentBusinessSettings.whatsappNumber)) || '').replace(/\D/g, '');
-    }
-
-    function getBusinessWhatsappRaw(){
       return String((currentBusinessSettings && currentBusinessSettings.whatsappNumber) || '').replace(/\D/g, '');
     }
 
-    function normalizeIntlPhone(phone){
-      const clean = String(phone || '').replace(/\D/g, '');
-      return clean.startsWith('0') ? ('972' + clean.slice(1)) : clean;
-    }
-
-    function normalizeLocalPhone(phone){
-      const clean = String(phone || '').replace(/\D/g, '');
-      if(clean.startsWith('9725') && clean.length === 12) return '0' + clean.slice(3);
-      return clean;
-    }
-
-    function getWhatsappBotMode(){
-      const explicit = String((currentBusinessSettings && (currentBusinessSettings.whatsappBotMode || currentBusinessSettings.whatsappMode)) || '').toLowerCase();
-      if(explicit === 'central' || explicit === 'bot') return 'central';
-      if(explicit === 'private' || explicit === 'owner') return 'private';
-      if(explicit === 'off' || explicit === 'regular' || explicit === 'normal') return 'off';
-      const legacyEnabled = !!(currentBusinessSettings && (currentBusinessSettings.whatsappEnabled === true || currentBusinessSettings.botEnabled === true));
-      return legacyEnabled ? 'central' : 'off';
-    }
-
     function getWhatsappLink(){
-      const mode = getWhatsappBotMode();
-      const businessWhatsapp = normalizeIntlPhone(getBusinessWhatsappRaw());
-      const botWhatsapp = normalizeIntlPhone((currentBusinessSettings && (currentBusinessSettings.centralBotNumber || currentBusinessSettings.botWhatsappNumber)) || CENTRAL_BOT_WHATSAPP_NUMBER);
-      const target = mode === 'central' ? botWhatsapp : businessWhatsapp;
-      if(!target) return '#';
+      const phone = getBusinessPhoneRaw();
+      if(!phone) return '#';
+      const intl = phone.startsWith('0') ? ('972' + phone.slice(1)) : phone;
       const businessId = String((currentBusinessSettings && currentBusinessSettings.businessId) || ACTIVE_BUSINESS_ID || '').trim();
-      const base = 'https://wa.me/' + target;
-      if((mode === 'central' || mode === 'private') && businessId){
-        return base + '?text=' + encodeURIComponent('start_' + businessId);
+      const botEnabled = !(currentBusinessSettings && (currentBusinessSettings.whatsappEnabled === false || currentBusinessSettings.botEnabled === false));
+      const base = 'https://wa.me/' + intl;
+      if(botEnabled && businessId){
+        return base + '?text=' + encodeURIComponent('hi_' + businessId);
       }
       return base;
     }
 
     function getPhoneLink(){
-      const phone = normalizeLocalPhone(getBusinessPhoneRaw());
+      const phone = getBusinessPhoneRaw();
       return phone ? ('tel:' + phone) : '#';
     }
 
