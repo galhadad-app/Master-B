@@ -689,18 +689,32 @@ function normalizeWaitlistEntry(entry) {
     String(entry.name || "").trim() ||
     `${String(entry.firstName || "").trim()} ${String(entry.lastName || "").trim()}`.trim();
 
+  const explicitCustomer =
+    entry.customerWhatsapp ||
+    entry.clientWhatsapp ||
+    entry.customerPhone ||
+    entry.clientPhone ||
+    entry.phoneDisplay ||
+    entry.displayPhone ||
+    entry.mobile ||
+    entry.phone ||
+    "";
+
+  const customerIntl = toWhatsAppRecipient(explicitCustomer);
+  const displayPhone = whatsappToIsraeliPhone(customerIntl || explicitCustomer);
+
   return {
     ...entry,
     id: entry.id || entry.waitlistId || "",
     name: fullName,
     firstName: String(entry.firstName || "").trim(),
     lastName: String(entry.lastName || "").trim(),
-    phone: normalizePhone(entry.phone),
-    phoneDisplay: normalizePhone(entry.phoneDisplay || entry.displayPhone || ""),
-    customerPhone: normalizePhone(entry.customerPhone || entry.clientPhone || entry.phoneDisplay || entry.displayPhone || ""),
-    clientPhone: normalizePhone(entry.clientPhone || entry.customerPhone || entry.phoneDisplay || entry.displayPhone || ""),
-    customerWhatsapp: normalizePhone(entry.customerWhatsapp || entry.clientWhatsapp || ""),
-    clientWhatsapp: normalizePhone(entry.clientWhatsapp || entry.customerWhatsapp || ""),
+    phone: customerIntl,
+    phoneDisplay: displayPhone,
+    customerPhone: customerIntl,
+    clientPhone: customerIntl,
+    customerWhatsapp: customerIntl,
+    clientWhatsapp: customerIntl,
     service: String(entry.service || "").trim(),
     status: String(entry.status || "ממתין").trim(),
     claimToken: String(entry.claimToken || "").trim(),
@@ -732,8 +746,6 @@ function getProtectedWhatsappNumbers(business = {}) {
 function getWaitlistRecipientPhone(entry = {}, business = {}) {
   const protectedNumbers = getProtectedWhatsappNumbers(business);
 
-  // IMPORTANT: a waitlist notification must go to the waiting customer only.
-  // Prefer explicit customer fields that are written when the client joins the waitlist.
   const candidates = [
     entry.customerWhatsapp,
     entry.clientWhatsapp,
@@ -749,10 +761,19 @@ function getWaitlistRecipientPhone(entry = {}, business = {}) {
     const normalized = toWhatsAppRecipient(candidate);
     if (!normalized) continue;
 
+    // Never send a waitlist offer to the bot number or the business contact number.
     if (protectedNumbers.has(normalized)) {
       console.warn("⚠️ Skipping protected waitlist recipient number", {
         waitlistId: entry.id || entry.waitlistId || "",
         businessId: business.businessId || business.id || "",
+        phone: normalized,
+      });
+      continue;
+    }
+
+    if (!/^9725\d{8}$/.test(normalized)) {
+      console.warn("⚠️ Skipping invalid Israeli mobile waitlist recipient", {
+        waitlistId: entry.id || entry.waitlistId || "",
         phone: normalized,
       });
       continue;
