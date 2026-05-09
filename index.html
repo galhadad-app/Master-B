@@ -3,7 +3,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>תבנית אפליקציית מספרה</title>
   <style>
     :root{
@@ -1140,10 +1140,6 @@ body.business-frozen{overflow:hidden;}
 </style>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0d1016">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="תן לעבוד!">
 </head>
 <body>
   <div id="loader"><img id="loaderLogo" src="logo.png" alt="לוגו"></div>
@@ -1645,6 +1641,7 @@ body.business-frozen{overflow:hidden;}
       .replace(/[^a-zA-Z0-9_-]/g, '-')
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '') || DEFAULT_BUSINESS_ID;
+    const CENTRAL_BOT_WHATSAPP_NUMBER = '972547674814';
 
     /*
       זה הלב של התבנית.
@@ -1657,8 +1654,12 @@ body.business-frozen{overflow:hidden;}
       businessTypeLabel: 'מספרה',
       ownerBadge: 'עמוד בעל העסק',
       whatsappNumber: '',
-      whatsappEnabled: true,
-      botEnabled: true,
+      centralBotNumber: CENTRAL_BOT_WHATSAPP_NUMBER,
+      botWhatsappNumber: CENTRAL_BOT_WHATSAPP_NUMBER,
+      whatsappBotMode: 'off',
+      whatsappMode: 'off',
+      whatsappEnabled: false,
+      botEnabled: false,
       ownerAccess: false,
       clientOwnerAccess: false,
       businessAddress: '',
@@ -3988,44 +3989,49 @@ body.business-frozen{overflow:hidden;}
     function playBookSound(){ const a = document.getElementById('bookSound'); if(!a) return; a.currentTime = 0; a.play().catch(()=>{}); }
 
     function getBusinessPhoneRaw(){
+      return String((currentBusinessSettings && (currentBusinessSettings.phone || currentBusinessSettings.businessPhone || currentBusinessSettings.whatsappNumber)) || '').replace(/\D/g, '');
+    }
+
+    function getBusinessWhatsappRaw(){
       return String((currentBusinessSettings && currentBusinessSettings.whatsappNumber) || '').replace(/\D/g, '');
     }
 
-    function getWhatsappPhoneIntl(){
-      const phone = getBusinessPhoneRaw();
-      if(!phone) return '';
-      return phone.startsWith('0') ? ('972' + phone.slice(1)) : phone;
+    function normalizeIntlPhone(phone){
+      const clean = String(phone || '').replace(/\D/g, '');
+      return clean.startsWith('0') ? ('972' + clean.slice(1)) : clean;
     }
 
-    function getCallPhoneLocal(){
-      const phone = getBusinessPhoneRaw();
-      if(!phone) return '';
-      if(phone.startsWith('972') && phone.length === 12) return '0' + phone.slice(3);
-      return phone;
+    function normalizeLocalPhone(phone){
+      const clean = String(phone || '').replace(/\D/g, '');
+      if(clean.startsWith('9725') && clean.length === 12) return '0' + clean.slice(3);
+      return clean;
     }
 
-    function isWhatsappServiceActive(){
-      if(!currentBusinessSettings) return false;
-      const mode = String(currentBusinessSettings.whatsappBotMode || currentBusinessSettings.whatsappMode || '').toLowerCase();
-      if(mode === 'off') return false;
-      if(mode === 'private') return true;
-      if(mode === 'central') return true;
-      return currentBusinessSettings.whatsappEnabled === true || currentBusinessSettings.botEnabled === true || currentBusinessSettings.whatsappBotEnabled === true || currentBusinessSettings.waBotEnabled === true;
+    function getWhatsappBotMode(){
+      const explicit = String((currentBusinessSettings && (currentBusinessSettings.whatsappBotMode || currentBusinessSettings.whatsappMode)) || '').toLowerCase();
+      if(explicit === 'central' || explicit === 'bot') return 'central';
+      if(explicit === 'private' || explicit === 'owner') return 'private';
+      if(explicit === 'off' || explicit === 'regular' || explicit === 'normal') return 'off';
+      const legacyEnabled = !!(currentBusinessSettings && (currentBusinessSettings.whatsappEnabled === true || currentBusinessSettings.botEnabled === true));
+      return legacyEnabled ? 'central' : 'off';
     }
 
     function getWhatsappLink(){
-      const intl = getWhatsappPhoneIntl();
-      if(!intl) return '#';
+      const mode = getWhatsappBotMode();
+      const businessWhatsapp = normalizeIntlPhone(getBusinessWhatsappRaw());
+      const botWhatsapp = normalizeIntlPhone((currentBusinessSettings && (currentBusinessSettings.centralBotNumber || currentBusinessSettings.botWhatsappNumber)) || CENTRAL_BOT_WHATSAPP_NUMBER);
+      const target = mode === 'central' ? botWhatsapp : businessWhatsapp;
+      if(!target) return '#';
       const businessId = String((currentBusinessSettings && currentBusinessSettings.businessId) || ACTIVE_BUSINESS_ID || '').trim();
-      const base = 'https://wa.me/' + intl;
-      if(isWhatsappServiceActive() && businessId){
+      const base = 'https://wa.me/' + target;
+      if((mode === 'central' || mode === 'private') && businessId){
         return base + '?text=' + encodeURIComponent('start_' + businessId);
       }
       return base;
     }
 
     function getPhoneLink(){
-      const phone = getCallPhoneLocal();
+      const phone = normalizeLocalPhone(getBusinessPhoneRaw());
       return phone ? ('tel:' + phone) : '#';
     }
 
@@ -4275,46 +4281,24 @@ document.getElementById('bookBtn').addEventListener('click', bookAppointment);
 
 
 <script>
-let deferredPrompt = null;
-let appInstallReady = false;
-
+let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  appInstallReady = true;
 });
-
-window.addEventListener('appinstalled', () => {
-  deferredPrompt = null;
-  appInstallReady = false;
-});
-
 document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('installAppBtn');
   if(!btn) return;
-
   btn.addEventListener('click', async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
       await deferredPrompt.userChoice;
       deferredPrompt = null;
-      return;
-    }
-
-    const isAndroid = /Android/i.test(navigator.userAgent);
-    if (isAndroid) {
-      alert('כדי להתקין: לחץ על שלוש הנקודות בדפדפן → הוסף למסך הבית / התקן אפליקציה');
     } else {
-      alert('באייפון: לחץ שיתוף → הוסף למסך הבית');
+      alert("באייפון: לחץ שיתוף → הוסף למסך הבית");
     }
   });
 });
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
-  });
-}
 </script>
 
 
