@@ -178,7 +178,7 @@ app.post("/waitlist/notify", async (req, res) => {
 
         const waitlistId = entry.id || entry.waitlistId || "";
         const claimToken = entry.claimToken || createClaimToken();
-        const claimUrl = entry.claimUrl || buildClaimUrl({ claimToken, offerToken }, time);
+        const claimUrl = buildClaimUrl({ claimToken, offerToken, businessId }, time);
 
         if (waitlistId) {
           await db.collection(WAITLIST_COLLECTION).doc(waitlistId).set(
@@ -625,7 +625,7 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
         if (!phone) throw new Error("invalid_waitlist_recipient");
 
         const claimToken = entry.claimToken || createClaimToken();
-        const claimUrl = buildClaimUrl({ claimToken, offerToken }, time);
+        const claimUrl = buildClaimUrl({ claimToken, offerToken, businessId: business.businessId }, time);
 
         await db.collection(WAITLIST_COLLECTION).doc(entry.id).set(
           {
@@ -714,29 +714,33 @@ function getCentralBotWhatsappNumber() {
   return normalizePhone(process.env.CENTRAL_BOT_WHATSAPP_NUMBER || process.env.BOT_WHATSAPP_NUMBER || "972547674814");
 }
 
-function getBusinessWhatsappNumbers(business = {}) {
-  return [
+function getProtectedWhatsappNumbers(business = {}) {
+  const protectedNumbers = new Set([
+    getCentralBotWhatsappNumber(),
+    "972547674814",
     business.whatsappNumber,
     business.businessWhatsapp,
     business.whatsapp,
     business.phone,
     business.businessPhone,
-  ].map(normalizePhone).filter(Boolean);
+    business.botWhatsappNumber,
+    business.centralBotWhatsappNumber,
+  ].map(normalizePhone).filter(Boolean));
+  return protectedNumbers;
 }
 
 function getWaitlistRecipientPhone(entry = {}, business = {}) {
-  const botNumber = getCentralBotWhatsappNumber();
-  const businessNumbers = getBusinessWhatsappNumbers(business);
+  const protectedNumbers = getProtectedWhatsappNumbers(business);
 
   // IMPORTANT: a waitlist notification must go to the waiting customer only.
-  // Prefer explicit customer/display fields. Use entry.phone only as a fallback.
+  // Prefer explicit customer fields that are written when the client joins the waitlist.
   const candidates = [
+    entry.customerWhatsapp,
+    entry.clientWhatsapp,
     entry.customerPhone,
     entry.clientPhone,
     entry.phoneDisplay,
     entry.displayPhone,
-    entry.customerWhatsapp,
-    entry.clientWhatsapp,
     entry.mobile,
     entry.phone,
   ];
@@ -745,18 +749,8 @@ function getWaitlistRecipientPhone(entry = {}, business = {}) {
     const normalized = toWhatsAppRecipient(candidate);
     if (!normalized) continue;
 
-    // Never send a waitlist notification to the central bot itself.
-    if (botNumber && normalized === botNumber) {
-      console.warn("⚠️ Skipping waitlist recipient because it is the central bot number", {
-        waitlistId: entry.id || entry.waitlistId || "",
-        phone: normalized,
-      });
-      continue;
-    }
-
-    // Never send a waitlist notification to the business phone/WhatsApp.
-    if (businessNumbers.includes(normalized)) {
-      console.warn("⚠️ Skipping waitlist recipient because it is a business number", {
+    if (protectedNumbers.has(normalized)) {
+      console.warn("⚠️ Skipping protected waitlist recipient number", {
         waitlistId: entry.id || entry.waitlistId || "",
         businessId: business.businessId || business.id || "",
         phone: normalized,
@@ -764,6 +758,11 @@ function getWaitlistRecipientPhone(entry = {}, business = {}) {
       continue;
     }
 
+    console.log("✅ Waitlist recipient selected", {
+      waitlistId: entry.id || entry.waitlistId || "",
+      businessId: business.businessId || business.id || "",
+      phone: normalized,
+    });
     return normalized;
   }
 
@@ -773,12 +772,14 @@ function getWaitlistRecipientPhone(entry = {}, business = {}) {
     rawPhone: entry.phone || "",
     phoneDisplay: entry.phoneDisplay || "",
     customerPhone: entry.customerPhone || "",
+    customerWhatsapp: entry.customerWhatsapp || "",
   });
   return "";
 }
 
 function buildClaimUrl(entry, time) {
   const url = new URL(APP_BASE_URL);
+  if (entry.businessId) url.searchParams.set("business", entry.businessId);
   url.searchParams.set("claimWaitlist", entry.claimToken);
   url.searchParams.set("time", time);
   if (entry.offerToken) url.searchParams.set("offer", entry.offerToken);
