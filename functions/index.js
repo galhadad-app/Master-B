@@ -1065,16 +1065,25 @@ function extractMessageText(message) {
 
 function getWhatsappBotMode(business) {
   const explicit = String(business?.whatsappBotMode || "").trim().toLowerCase();
-  if (["off", "central", "private"].includes(explicit)) return explicit;
+
+  // New 3-mode model from the business manager:
+  // regular = no WhatsApp automation, bot = central bot, owner = business owner's own WhatsApp API.
+  if (["regular", "רגיל", "off", "none", "disabled", "כבוי"].includes(explicit)) return "off";
+  if (["bot", "בוט", "central", "מרכזי"].includes(explicit)) return "central";
+  if (["owner", "בעל עסק", "business", "private", "פרטי"].includes(explicit)) return "private";
 
   const legacyEnabled = business?.whatsappEnabled ?? business?.whatsappBotEnabled ?? business?.botEnabled ?? business?.waBotEnabled;
   if (legacyEnabled === false || legacyEnabled === 0) return "off";
 
   const legacyText = String(legacyEnabled ?? "").trim().toLowerCase();
-  if (["false", "0", "off", "כבוי", "disabled", "no"].includes(legacyText)) return "off";
+  if (["false", "0", "off", "regular", "רגיל", "כבוי", "disabled", "no"].includes(legacyText)) return "off";
+  if (["true", "1", "bot", "בוט", "central", "on", "enabled", "yes"].includes(legacyText)) return "central";
+  if (["owner", "בעל עסק", "business", "private"].includes(legacyText)) return "private";
 
   const legacyMode = String(business?.whatsappMode || business?.waMode || DEFAULT_WHATSAPP_MODE || "central").trim().toLowerCase();
-  return legacyMode === "private" ? "private" : "central";
+  if (["regular", "רגיל", "off", "none", "disabled", "כבוי"].includes(legacyMode)) return "off";
+  if (["owner", "בעל עסק", "business", "private", "פרטי"].includes(legacyMode)) return "private";
+  return "central";
 }
 
 function isWhatsappBotDisabled(business) {
