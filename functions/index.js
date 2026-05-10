@@ -24,6 +24,8 @@ const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID;
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || "gal_verify_token";
 const APP_BASE_URL = process.env.APP_BASE_URL || "https://galhadad-app.github.io/Master-B/";
 const DEFAULT_WHATSAPP_MODE = process.env.DEFAULT_WHATSAPP_MODE || "central";
+const WAITLIST_TEMPLATE_NAME = process.env.WAITLIST_TEMPLATE_NAME || "waitlist_slot_available";
+const WAITLIST_TEMPLATE_LANGUAGE = process.env.WAITLIST_TEMPLATE_LANGUAGE || "he";
 
 if (!WHATSAPP_TOKEN || !PHONE_NUMBER_ID) {
   console.error("❌ חסר WHATSAPP_TOKEN או PHONE_NUMBER_ID");
@@ -205,7 +207,14 @@ app.post("/waitlist/notify", async (req, res) => {
           throw new Error("protected_waitlist_recipient_bot_number");
         }
 
-        const apiResult = await sendWhatsAppMessage(phone, message, { business, waitlistMessage: true });
+        const apiResult = await sendWaitlistTemplateMessage(phone, {
+          business,
+          customerName: entry.firstName || entry.name || "לקוח",
+          businessName: finalBusinessName,
+          date: formatDatePrettyFromKey(date),
+          time,
+          claimUrl,
+        });
         sent += 1;
         results.push({ phone, ok: true, claimUrl, messageId: apiResult?.messages?.[0]?.id || "" });
       } catch (err) {
@@ -652,7 +661,14 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
           throw new Error("protected_waitlist_recipient_bot_number");
         }
 
-        await sendWhatsAppMessage(phone, message, { business, waitlistMessage: true });
+        await sendWaitlistTemplateMessage(phone, {
+          business,
+          customerName: entry.firstName || entry.name || "לקוח",
+          businessName: business.businessName || business.name || "העסק",
+          date: formatDatePrettyFromKey(date),
+          time,
+          claimUrl,
+        });
         sent += 1;
       } catch (err) {
         failed += 1;
@@ -1037,8 +1053,109 @@ async function clearSession(from) {
 }
 
 // =======================
-// WhatsApp API - text messages only
+// WhatsApp API - text messages + waitlist templates
 // =======================
+
+async function sendWaitlistTemplateMessage(to, data = {}) {
+  const activeBusiness = data.business || getWhatsappContext()?.business || null;
+
+  if (activeBusiness && isWhatsappBotDisabled(activeBusiness)) {
+    console.log("⏸️ Waitlist template skipped because bot is disabled", {
+      businessId: activeBusiness.businessId || activeBusiness.id || "",
+      to,
+    });
+    return null;
+  }
+
+  const config = resolveWhatsAppConfig(activeBusiness, { waitlistMessage: true });
+
+  if (!config.token || !config.phoneNumberId) {
+    console.error("Missing WhatsApp token or phoneNumberId for waitlist template", {
+      mode: config.mode,
+      businessId: config.businessId || "",
+      hasToken: Boolean(config.token),
+      hasPhoneNumberId: Boolean(config.phoneNumberId),
+    });
+    return null;
+  }
+
+  const recipient = toWhatsAppRecipient(to);
+  if (!recipient) throw new Error("invalid_whatsapp_recipient");
+
+  const url = `https://graph.facebook.com/v25.0/${config.phoneNumberId}/messages`;
+
+  const params = [
+    String(data.customerName || "לקוח"),
+    String(data.businessName || "העסק"),
+    String(data.date || ""),
+    String(data.time || ""),
+    String(data.claimUrl || ""),
+  ];
+
+  console.log("➡️ Sending waitlist TEMPLATE", {
+    to: recipient,
+    mode: config.mode,
+    businessId: config.businessId || "",
+    phoneNumberId: config.phoneNumberId,
+    template: WAITLIST_TEMPLATE_NAME,
+    language: WAITLIST_TEMPLATE_LANGUAGE,
+    paramsPreview: params,
+  });
+
+  let response;
+  try {
+    response = await axios.post(
+      url,
+      {
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: recipient,
+        type: "template",
+        template: {
+          name: WAITLIST_TEMPLATE_NAME,
+          language: { code: WAITLIST_TEMPLATE_LANGUAGE },
+          components: [
+            {
+              type: "body",
+              parameters: params.map((value) => ({
+                type: "text",
+                text: value,
+              })),
+            },
+          ],
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${config.token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (err) {
+    console.error("❌ Waitlist template send failed", {
+      to: recipient,
+      mode: config.mode,
+      businessId: config.businessId || "",
+      phoneNumberId: config.phoneNumberId,
+      template: WAITLIST_TEMPLATE_NAME,
+      language: WAITLIST_TEMPLATE_LANGUAGE,
+      error: getErrorPayload(err),
+    });
+    throw err;
+  }
+
+  console.log("✅ Waitlist template sent", {
+    to: recipient,
+    mode: config.mode,
+    businessId: config.businessId || "",
+    phoneNumberId: config.phoneNumberId,
+    messageId: response.data?.messages?.[0]?.id || "",
+  });
+
+  return response.data;
+}
+
 async function sendWhatsAppMessage(to, body, options = {}) {
   const activeBusiness = options.business || getWhatsappContext()?.business || null;
   if (activeBusiness && isWhatsappBotDisabled(activeBusiness)) {
@@ -1347,6 +1464,8 @@ app.get("/debug/whatsapp", async (req, res) => {
     defaultWhatsappMode: DEFAULT_WHATSAPP_MODE,
     appBaseUrl: APP_BASE_URL,
     centralBotWhatsappNumber: getCentralBotWhatsappNumber(),
+    waitlistTemplateName: WAITLIST_TEMPLATE_NAME,
+    waitlistTemplateLanguage: WAITLIST_TEMPLATE_LANGUAGE,
   });
 });
 
