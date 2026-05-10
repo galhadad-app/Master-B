@@ -201,7 +201,11 @@ app.post("/waitlist/notify", async (req, res) => {
           claimUrl,
         });
 
-        const apiResult = await sendWhatsAppMessage(phone, message, { business });
+        if (getProtectedWhatsappNumbers(business).has(normalizePhone(phone))) {
+          throw new Error("protected_waitlist_recipient_bot_number");
+        }
+
+        const apiResult = await sendWhatsAppMessage(phone, message, { business, waitlistMessage: true });
         sent += 1;
         results.push({ phone, ok: true, claimUrl, messageId: apiResult?.messages?.[0]?.id || "" });
       } catch (err) {
@@ -644,7 +648,11 @@ async function notifyWaitlistForFreedSlot(business, date, time) {
           claimUrl,
         });
 
-        await sendWhatsAppMessage(phone, message, { business });
+        if (getProtectedWhatsappNumbers(business).has(normalizePhone(phone))) {
+          throw new Error("protected_waitlist_recipient_bot_number");
+        }
+
+        await sendWhatsAppMessage(phone, message, { business, waitlistMessage: true });
         sent += 1;
       } catch (err) {
         failed += 1;
@@ -726,16 +734,20 @@ function getCentralBotWhatsappNumber() {
 }
 
 function getProtectedWhatsappNumbers(business = {}) {
+  // חשוב:
+  // כאן מגנים רק על מספרי בוט/שליחה, ולא על מספר הטלפון הרגיל של בעל העסק.
+  // בעבר business.phone / businessPhone נכנסו לרשימת החסומים,
+  // ולכן אם בעל העסק בדק כלקוח ברשימת המתנה - המספר שלו נפסל בטעות.
   const protectedNumbers = new Set([
     getCentralBotWhatsappNumber(),
     "972547674814",
-    business.whatsappNumber,
-    business.businessWhatsapp,
-    business.whatsapp,
-    business.phone,
-    business.businessPhone,
+    process.env.CENTRAL_BOT_WHATSAPP_NUMBER,
+    process.env.BOT_WHATSAPP_NUMBER,
     business.botWhatsappNumber,
+    business.centralBotNumber,
     business.centralBotWhatsappNumber,
+    business.whatsappBotNumber,
+    business.waBotNumber,
   ].map(normalizePhone).filter(Boolean));
   return protectedNumbers;
 }
@@ -1334,6 +1346,7 @@ app.get("/debug/whatsapp", async (req, res) => {
     verifyToken: VERIFY_TOKEN ? "configured" : "missing",
     defaultWhatsappMode: DEFAULT_WHATSAPP_MODE,
     appBaseUrl: APP_BASE_URL,
+    centralBotWhatsappNumber: getCentralBotWhatsappNumber(),
   });
 });
 
