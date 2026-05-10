@@ -3,7 +3,7 @@
 <html lang="he" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>תבנית אפליקציית מספרה</title>
   <style>
     :root{
@@ -31,6 +31,8 @@
         linear-gradient(180deg,#090b10 0%, #0f131b 100%);
       color:var(--text);
       min-height:100vh;
+      touch-action:manipulation;
+      -webkit-text-size-adjust:100%;
     }
 
     .app{
@@ -389,6 +391,110 @@
     .owner-tab.active{background:rgba(215,180,109,.12);color:#f7e7c3;border-color:rgba(215,180,109,.18);box-shadow:none}
     .owner-panel{display:none}
     .owner-panel.active{display:block}
+    .owner-tab.hidden-by-access{display:none!important}
+
+    .reports-list{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:7px;
+      margin-top:14px;
+    }
+    .report-tile{
+      min-height:78px;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;
+      background:linear-gradient(180deg,rgba(23,34,55,.48),rgba(10,16,28,.72));
+      padding:7px 5px 8px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      box-shadow:0 8px 18px rgba(0,0,0,.13);
+    }
+    .report-month{
+      width:100%;
+      text-align:center;
+      font-size:10px;
+      font-weight:900;
+      color:#fff;
+      line-height:1.25;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .report-download{
+      width:34px;
+      height:39px;
+      border:none;
+      cursor:pointer;
+      background:transparent;
+      padding:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      -webkit-tap-highlight-color:transparent;
+      transition:.18s transform,.18s opacity;
+    }
+    .report-download:hover{transform:translateY(-2px);opacity:.92}
+    .pdf-icon{
+      width:32px;
+      height:37px;
+      border-radius:7px;
+      background:#f7f7f2;
+      border:1px solid rgba(255,255,255,.55);
+      position:relative;
+      box-shadow:0 8px 16px rgba(0,0,0,.16);
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      overflow:hidden;
+    }
+    .pdf-icon:before{
+      content:"";
+      position:absolute;
+      top:0;
+      left:0;
+      width:11px;
+      height:11px;
+      background:linear-gradient(135deg,#d9d9d2 0%,#d9d9d2 50%,transparent 51%);
+      border-bottom-right-radius:3px;
+    }
+    .pdf-icon span{
+      width:100%;
+      padding:4px 0 5px;
+      background:#c83a32;
+      color:#fff;
+      font-size:8.5px;
+      font-weight:900;
+      letter-spacing:.6px;
+      direction:ltr;
+      text-align:center;
+    }
+    .reports-block-title{margin:20px 0 4px;text-align:center;color:#f7e7c3;font-size:16px}
+    .reports-block-note{margin:0;color:var(--muted);font-size:12px;text-align:center;line-height:1.6}
+    .pdf-source{position:absolute;top:0;left:0;width:794px;min-height:1123px;background:#f4f1ea;color:#222;font-family:Arial,"Heebo",sans-serif;direction:rtl;padding:54px;z-index:999999;overflow:hidden;box-shadow:none}
+    .pdf-card{min-height:1015px;background:#fff;border:1px solid #ded8cc;border-radius:18px;padding:54px 58px 42px;box-shadow:none;position:relative;overflow:hidden}
+    .pdf-card:before{content:"";position:absolute;top:0;right:0;left:0;height:8px;background:linear-gradient(90deg,#d8c49a,#f1e6cf,#d8c49a)}
+    .pdf-head{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:start;padding-bottom:28px;border-bottom:1px solid #e8e1d5;margin-bottom:34px}
+    .pdf-kicker{font-size:12px;color:#9a8560;font-weight:900;letter-spacing:.7px;margin-bottom:10px}
+    .pdf-business{font-size:34px;font-weight:900;color:#171717;line-height:1.15;margin:0 0 8px;letter-spacing:-.4px}
+    .pdf-month{font-size:15px;color:#6f6a60;line-height:1.55}
+    .pdf-date-box{min-width:124px;border:1px solid #e6dfd2;border-radius:16px;background:#fbfaf7;padding:14px 16px;text-align:center;color:#7a7469}
+    .pdf-date-box .small{font-size:10px;color:#a49b8d;margin-bottom:6px;font-weight:800}
+    .pdf-date-box .date{font-size:14px;color:#2b2b2b;font-weight:900;direction:ltr}
+    .pdf-summary{border:1px solid #e9e2d6;border-radius:20px;background:linear-gradient(180deg,#fff,#fcfbf8);padding:26px;margin-bottom:28px;text-align:center}
+    .pdf-summary-label{font-size:13px;color:#8b806e;margin-bottom:8px;font-weight:800}
+    .pdf-summary-value{font-size:52px;font-weight:900;color:#151515;line-height:1;direction:ltr}
+    .pdf-summary-note{font-size:11px;color:#9b9489;margin-top:9px}
+    .pdf-block{margin-bottom:24px}.pdf-block-title{font-size:14px;font-weight:900;color:#2b2b2b;margin-bottom:10px;display:flex;align-items:center;gap:10px}.pdf-block-title:before{content:"";width:24px;height:1px;background:#d8c49a;display:inline-block}
+    .pdf-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.pdf-grid.three{grid-template-columns:repeat(3,1fr)}
+    .pdf-metric-card{border:1px solid #ece5da;border-radius:18px;background:#fff;padding:18px 16px;min-height:104px;display:flex;flex-direction:column;justify-content:space-between}
+    .pdf-metric-label{font-size:12px;color:#82786b;font-weight:800;line-height:1.35}.pdf-metric-value{font-size:34px;font-weight:900;color:#181818;line-height:1;direction:ltr;text-align:right;margin-top:14px}.pdf-wide{grid-column:1 / -1}
+    .pdf-note{margin-top:30px;padding-top:16px;border-top:1px solid #eee7dc;color:#8d8579;font-size:11.5px;line-height:1.8;text-align:center;word-spacing:2px;letter-spacing:.05px}
+    .pdf-footer{position:absolute;right:58px;left:58px;bottom:34px;border-top:1px solid #eee7dc;padding-top:12px;display:flex;justify-content:space-between;gap:20px;color:#9a9286;font-size:10.5px}
+    .pdf-footer .ltr{direction:ltr;text-align:left;unicode-bidi:bidi-override}
+    @media(max-width:420px){.reports-list{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.report-tile{min-height:72px;border-radius:13px;padding:6px 4px}.report-month{font-size:9px}.report-download{width:31px;height:36px}.pdf-icon{width:29px;height:34px;border-radius:6px}}
 
     .active-settings-panel{
       padding-top:2px;
@@ -1317,7 +1423,10 @@ body.business-frozen{overflow:hidden;}
                     <input id="settingsBusinessAddress" placeholder="כתובת העסק" />
                   </div>
                   <div class="settings-field">
-                    <input id="settingsOwnerCode" inputmode="numeric" maxlength="4" placeholder="קוד כניסה לבעל העסק" />
+                    <input id="settingsOwnerCode" inputmode="numeric" maxlength="4" placeholder="קוד לתורים ולקוחות" />
+                  </div>
+                  <div class="settings-field">
+                    <input id="settingsStatsCode" inputmode="numeric" maxlength="4" placeholder="קוד לסטטיסטיקה והגדרות" />
                   </div>
                   <div class="settings-field">
                     <textarea id="settingsBusinessDescription" placeholder="תיאור קצר"></textarea>
@@ -1506,6 +1615,12 @@ body.business-frozen{overflow:hidden;}
   </div>
 
   <div class="stats-report-note" id="statsImpactNote">כאן יוצג סיכום קצר וברור על התרומה של המערכת החודש.</div>
+
+  <div class="stats-report-section" id="statsReportsSection">
+    <h3 class="reports-block-title">דוחות חודשיים</h3>
+    <p class="reports-block-note">בחר חודש והורד דוח PDF מסודר לעסק.</p>
+    <div id="statsReportsList" class="reports-list"></div>
+  </div>
 </div>
 
           </div>
@@ -1625,6 +1740,7 @@ body.business-frozen{overflow:hidden;}
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
@@ -1662,6 +1778,7 @@ body.business-frozen{overflow:hidden;}
       logoSrc: 'logo.png',
       heroBg: 'background-behind-logo.png',
       ownerCode: '1234',
+      statsSettingsCode: '4321',
       businessDescription: '',
       importantNotice: '',
       isFrozen: false,
@@ -1702,6 +1819,7 @@ body.business-frozen{overflow:hidden;}
     let activeCustomerPhone = null;
     let activeClientAppointment = null;
     let detailsInitialState = { notes:'', source:'' };
+    let currentOwnerAccessLevel = 'basic';
     let appointmentsUnsubscribe = null;
     let codeModalAction = null;
     let pendingResetAction = null;
@@ -1830,6 +1948,7 @@ body.business-frozen{overflow:hidden;}
       const settingsWhatsapp = document.getElementById('settingsWhatsapp');
       const settingsBusinessAddress = document.getElementById('settingsBusinessAddress');
       const settingsOwnerCode = document.getElementById('settingsOwnerCode');
+      const settingsStatsCode = document.getElementById('settingsStatsCode');
       const settingsBusinessDescription = document.getElementById('settingsBusinessDescription');
       const settingsImportantNotice = document.getElementById('settingsImportantNotice');
       if(settingsBusinessName) settingsBusinessName.value = settings.businessName || '';
@@ -1837,6 +1956,7 @@ body.business-frozen{overflow:hidden;}
       if(settingsWhatsapp) settingsWhatsapp.value = settings.whatsappNumber || '';
       if(settingsBusinessAddress) settingsBusinessAddress.value = settings.businessAddress || '';
       if(settingsOwnerCode) settingsOwnerCode.value = settings.ownerCode || '';
+      if(settingsStatsCode) settingsStatsCode.value = settings.statsSettingsCode || '';
       if(settingsBusinessDescription) settingsBusinessDescription.value = settings.businessDescription || '';
       if(settingsImportantNotice) settingsImportantNotice.value = settings.importantNotice || '';
     }
@@ -3525,6 +3645,111 @@ body.business-frozen{overflow:hidden;}
           note.textContent = `החודש נכנסו ${monthVisits.toLocaleString('he-IL')} פעמים לאפליקציה ונקבעו ${totalAppointments.toLocaleString('he-IL')} תורים. ${autoActions.toLocaleString('he-IL')} פעולות טופלו דרך המערכת בלי צורך בשיחה ידנית.`;
         }
       }
+      renderMonthlyReports();
+    }
+
+
+    function monthKeyFromDate(date){
+      return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;
+    }
+    function monthLabelFromKey(monthKey){
+      const [y,m] = String(monthKey || '').split('-').map(Number);
+      if(!y || !m) return String(monthKey || '');
+      return new Date(y, m-1, 1).toLocaleDateString('he-IL', { month:'long', year:'numeric' });
+    }
+    function formatHebDate(date){
+      return date.toLocaleDateString('he-IL', { day:'2-digit', month:'2-digit', year:'numeric' });
+    }
+    function jsString(value){
+      return String(value ?? '').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n').replace(/\r/g,'');
+    }
+    function getBusinessMonthlyReport(monthKey){
+      const activeAppointments = getActiveAppointments().filter(item => !isClosedDateKey(item.date));
+      const monthAppointments = activeAppointments.filter(item => String(item.date || '').startsWith(monthKey));
+      const customers = getUniqueCustomers();
+      const visitsMap = currentBusinessSettings.visits || {};
+      const monthVisits = Object.entries(visitsMap).reduce((sum, [key, value]) => String(key).startsWith(monthKey) ? sum + (Number(value) || 0) : sum, 0);
+      let newCustomers = 0;
+      customers.forEach(customer => {
+        const phone = normalizePhone(customer.phone);
+        if(!phone) return;
+        const firstAppointment = activeAppointments
+          .filter(item => normalizePhone(item.phone) === phone && item.date)
+          .sort((a,b) => `${a.date || ''} ${a.time || ''}`.localeCompare(`${b.date || ''} ${b.time || ''}`))[0];
+        if(firstAppointment && String(firstAppointment.date || '').startsWith(monthKey)) newCustomers += 1;
+      });
+      const monthAppAppointments = monthAppointments.filter(item => normalizeSourceLabel(item.source) !== 'וואטסאפ').length;
+      const monthWhatsappAppointments = monthAppointments.filter(item => normalizeSourceLabel(item.source) === 'וואטסאפ').length;
+      const conversion = monthVisits > 0 ? Math.round((monthAppointments.length / monthVisits) * 100) : 0;
+      return { monthVisits, monthAppointments:monthAppointments.length, monthAppAppointments, monthWhatsappAppointments, totalCustomers:customers.length, newCustomers, conversion };
+    }
+    function getAvailableReportMonths(){
+      const set = new Set();
+      const visits = currentBusinessSettings.visits && typeof currentBusinessSettings.visits === 'object' ? currentBusinessSettings.visits : {};
+      Object.keys(visits).forEach(k => { if(/^\d{4}-\d{2}-\d{2}$/.test(k)) set.add(k.slice(0,7)); });
+      getActiveAppointments().forEach(item => { if(item.date && /^\d{4}-\d{2}-\d{2}$/.test(String(item.date))) set.add(String(item.date).slice(0,7)); });
+      const now = new Date();
+      for(let i=0;i<6;i++) set.add(monthKeyFromDate(new Date(now.getFullYear(), now.getMonth()-i, 1)));
+      return Array.from(set).sort().reverse().slice(0,12);
+    }
+    function renderMonthlyReports(){
+      const list = document.getElementById('statsReportsList');
+      if(!list) return;
+      const months = getAvailableReportMonths();
+      list.innerHTML = months.map(monthKey => {
+        const label = monthLabelFromKey(monthKey);
+        return `<div class="report-tile" title="${escapeHtml(label)}">
+          <div class="report-month">${escapeHtml(label)}</div>
+          <button class="report-download" onclick="downloadMonthlyPdf('${jsString(monthKey)}')" aria-label="הורד דוח PDF עבור ${escapeHtml(label)}">
+            <span class="pdf-icon"><span>PDF</span></span>
+          </button>
+        </div>`;
+      }).join('') || '<div class="empty-state">אין עדיין נתונים לדוחות.</div>';
+    }
+    async function downloadMonthlyPdf(monthKey){
+      if(!window.html2pdf){ showToast('ספריית PDF עדיין נטענת. נסה שוב בעוד רגע', true); return; }
+      const id = (currentBusinessSettings && currentBusinessSettings.businessId) || BUSINESS_TEMPLATE.businessId || ACTIVE_BUSINESS_ID;
+      const name = currentBusinessSettings.businessName || BUSINESS_TEMPLATE.businessName || id;
+      const label = monthLabelFromKey(monthKey);
+      const r = getBusinessMonthlyReport(monthKey);
+      const fileName = `דוח-${id}-${monthKey}.pdf`;
+      const wrap = document.createElement('div');
+      wrap.className = 'pdf-source';
+      wrap.innerHTML = `
+        <div class="pdf-card">
+          <div class="pdf-head">
+            <div>
+              <div class="pdf-kicker">דו״ח פעילות חודשי</div>
+              <h1 class="pdf-business">${escapeHtml(name)}</h1>
+              <div class="pdf-month">${escapeHtml(label)}</div>
+            </div>
+            <div class="pdf-date-box"><div class="small">תאריך הפקה</div><div class="date">${formatHebDate(new Date())}</div></div>
+          </div>
+          <div class="pdf-summary"><div class="pdf-summary-label">יחס המרה מהאפליקציה</div><div class="pdf-summary-value">${r.conversion}%</div><div class="pdf-summary-note">מחושב לפי תורים מול כניסות</div></div>
+          <div class="pdf-block"><div class="pdf-block-title">לקוחות</div><div class="pdf-grid"><div class="pdf-metric-card"><div class="pdf-metric-label">סה״כ</div><div class="pdf-metric-value">${r.totalCustomers}</div></div><div class="pdf-metric-card"><div class="pdf-metric-label">חדשים</div><div class="pdf-metric-value">${r.newCustomers}</div></div></div></div>
+          <div class="pdf-block"><div class="pdf-block-title">תורים</div><div class="pdf-grid three"><div class="pdf-metric-card"><div class="pdf-metric-label">אפליקציה</div><div class="pdf-metric-value">${r.monthAppAppointments}</div></div><div class="pdf-metric-card"><div class="pdf-metric-label">ווצאפ</div><div class="pdf-metric-value">${r.monthWhatsappAppointments}</div></div><div class="pdf-metric-card"><div class="pdf-metric-label">סה״כ</div><div class="pdf-metric-value">${r.monthAppointments}</div></div></div></div>
+          <div class="pdf-block"><div class="pdf-block-title">כניסות</div><div class="pdf-grid"><div class="pdf-metric-card pdf-wide"><div class="pdf-metric-label">סה״כ כניסות לאפליקציה</div><div class="pdf-metric-value">${r.monthVisits}</div></div></div></div>
+          <div class="pdf-note">הדוח מבוסס על הנתונים שנשמרו במערכת בזמן הפקת הקובץ.</div>
+          <div class="pdf-footer"><div>מערכת ניהול עסקים</div><div class="ltr">${escapeHtml(id)}</div></div>
+        </div>`;
+      document.body.appendChild(wrap);
+      try{
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        await html2pdf().set({
+          margin:0,
+          filename:fileName,
+          image:{type:'jpeg',quality:0.98},
+          html2canvas:{scale:2,useCORS:true,backgroundColor:'#f4f1ea',width:794,height:1123,windowWidth:794,windowHeight:1123,scrollX:0,scrollY:0,x:0,y:0},
+          jsPDF:{unit:'px',format:[794,1123],orientation:'portrait'},
+          pagebreak:{mode:['avoid-all']}
+        }).from(wrap).save();
+        showToast('הדוח ירד בהצלחה');
+      }catch(err){
+        console.error(err);
+        showToast('יצירת PDF נכשלה', true);
+      }finally{
+        wrap.remove();
+      }
     }
 
     function rerenderAll(){ renderDays(); renderSlots(); renderOwnerAppointments(); renderOwnerWaitlist(); renderOwnerCustomers(); renderStats(); updateBookButtonState(); }
@@ -3639,6 +3864,7 @@ body.business-frozen{overflow:hidden;}
         whatsappNumber: normalizePhone(document.getElementById('settingsWhatsapp').value),
         businessAddress: document.getElementById('settingsBusinessAddress').value.trim(),
         ownerCode: document.getElementById('settingsOwnerCode').value.replace(/\D/g, '').slice(0,4) || BUSINESS_TEMPLATE.ownerCode,
+        statsSettingsCode: document.getElementById('settingsStatsCode').value.replace(/\D/g, '').slice(0,4) || BUSINESS_TEMPLATE.statsSettingsCode,
         services: currentBusinessSettings.services,
         workingHours: currentBusinessSettings.workingHours
       };
@@ -3752,6 +3978,29 @@ body.business-frozen{overflow:hidden;}
     }
 
 
+
+    function getAdvancedOwnerCode(){
+      const code = String(currentBusinessSettings?.statsSettingsCode || BUSINESS_TEMPLATE.statsSettingsCode || '').replace(/\D/g,'').slice(0,4);
+      return code || String(BUSINESS_TEMPLATE.statsSettingsCode || '4321');
+    }
+
+    function applyOwnerAccessLevel(level){
+      currentOwnerAccessLevel = level === 'advanced' ? 'advanced' : 'basic';
+      const advancedPanels = ['statsPanel','settingsPanel'];
+      document.querySelectorAll('.owner-tab').forEach(tab => {
+        const isAdvanced = advancedPanels.includes(tab.dataset.panel);
+        tab.classList.toggle('hidden-by-access', currentOwnerAccessLevel !== 'advanced' && isAdvanced);
+      });
+      if(currentOwnerAccessLevel !== 'advanced'){
+        document.querySelectorAll('.owner-panel').forEach(panel => panel.classList.remove('active'));
+        document.querySelectorAll('.owner-tab').forEach(tab => tab.classList.remove('active'));
+        const firstTab = document.querySelector('.owner-tab[data-panel="appointmentsPanel"]');
+        const firstPanel = document.getElementById('appointmentsPanel');
+        if(firstTab) firstTab.classList.add('active');
+        if(firstPanel) firstPanel.classList.add('active');
+      }
+    }
+
     function openCodeModal(action){
       codeModalAction = typeof action === 'function' ? action : null;
       const input = document.getElementById('ownerCodeInput');
@@ -3765,8 +4014,10 @@ body.business-frozen{overflow:hidden;}
       openCodeModal(() => {
         document.getElementById('clientScreen').classList.remove('active');
         document.getElementById('ownerScreen').classList.add('active');
+        applyOwnerAccessLevel(currentOwnerAccessLevel);
         renderOwnerAppointments();
         renderOwnerCustomers();
+        renderStats();
       });
     }
 
@@ -3802,7 +4053,15 @@ body.business-frozen{overflow:hidden;}
         setTimeout(() => input.focus(), 50);
         return;
       }
-      if(code === currentBusinessSettings.ownerCode){
+      const basicCode = String(currentBusinessSettings.ownerCode || BUSINESS_TEMPLATE.ownerCode || '').replace(/\D/g,'').slice(0,4);
+      const advancedCode = getAdvancedOwnerCode();
+      if(code === advancedCode){
+        currentOwnerAccessLevel = 'advanced';
+        const action = codeModalAction;
+        closeOwnerModal();
+        if(typeof action === 'function') action();
+      } else if(code === basicCode){
+        currentOwnerAccessLevel = 'basic';
         const action = codeModalAction;
         closeOwnerModal();
         if(typeof action === 'function') action();
@@ -4200,6 +4459,7 @@ document.getElementById('bookBtn').addEventListener('click', bookAppointment);
     document.getElementById('settingsLogoInput').addEventListener('change', () => handleSettingsImageChange('settingsLogoInput', 'logoSrc'));
     document.getElementById('settingsHeroInput').addEventListener('change', () => handleSettingsImageChange('settingsHeroInput', 'heroBg'));
     document.getElementById('settingsOwnerCode').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0,4); });
+    document.getElementById('settingsStatsCode').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0,4); });
     document.getElementById('settingsWhatsapp').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, ''); });
     document.getElementById('addServiceBtn').addEventListener('click', () => {
       currentBusinessSettings.services.push({ label:'', value:'' });
@@ -4209,10 +4469,16 @@ document.getElementById('bookBtn').addEventListener('click', bookAppointment);
       openCodeModal(() => openConfirmResetModal(resetBusinessSettingsToDefault));
     });
     document.querySelectorAll('.owner-tab').forEach(tab => tab.addEventListener('click', () => {
+      const advancedPanels = ['statsPanel','settingsPanel'];
+      if(currentOwnerAccessLevel !== 'advanced' && advancedPanels.includes(tab.dataset.panel)){
+        showToast('הגישה למסך הזה דורשת קוד נפרד.', true);
+        return;
+      }
       document.querySelectorAll('.owner-tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.owner-panel').forEach(p => p.classList.remove('active'));
       tab.classList.add('active');
       document.getElementById(tab.dataset.panel).classList.add('active');
+      if(tab.dataset.panel === 'statsPanel') renderStats();
     }));
 
     (function(){
