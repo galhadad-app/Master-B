@@ -355,11 +355,11 @@
 
         <div class="row">
           <div><label>גישת בעל עסק</label><select id="ownerAccess"><option value="false">סגורה — רק אני מנהל</option><option value="true">פתוחה — הלקוח יכול לערוך</option></select></div>
-          <div><label>סטטוס פנימי</label><input value="ניהול מרכזי אצלך" disabled /></div>
         </div>
 
         <div class="row">
-          <div><label>קוד בעל עסק</label><input id="ownerCode" inputmode="numeric" maxlength="4" placeholder="1234" /></div>
+          <div><label>קוד לתורים/לקוחות</label><input id="ownerCode" inputmode="numeric" maxlength="4" placeholder="1234" /></div>
+          <div><label>קוד לסטטיסטיקה/הגדרות</label><input id="statsSettingsCode" inputmode="numeric" maxlength="4" placeholder="4321" /></div>
         </div>
 
         <button class="btn primary" id="saveBtn">שמור עסק</button>
@@ -491,6 +491,7 @@
       whatsappAccessToken:document.getElementById("whatsappAccessToken"),
       ownerAccess:document.getElementById("ownerAccess"),
       ownerCode:document.getElementById("ownerCode"),
+      statsSettingsCode:document.getElementById("statsSettingsCode"),
       saveBtn:document.getElementById("saveBtn"),
       resetBtn:document.getElementById("resetBtn"),
       refreshBtn:document.getElementById("refreshBtn"),
@@ -946,6 +947,7 @@
       el.whatsappAccessToken.value="";
       el.ownerAccess.value="false";
       el.ownerCode.value="1234";
+      el.statsSettingsCode.value="4321";
       el.saveStatus.textContent="";
     }
 
@@ -964,6 +966,7 @@
       el.whatsappAccessToken.value=String(b.whatsappAccessToken||b.accessToken||b.waAccessToken||"");
       el.ownerAccess.value=ownerAccessForBusiness(b) ? "true" : "false";
       el.ownerCode.value=digits(b.ownerCode||"1234").slice(0,4);
+      el.statsSettingsCode.value=digits(b.statsSettingsCode||"4321").slice(0,4);
       showScreen("form");
     }
 
@@ -979,10 +982,12 @@
       const whatsappEnabled=whatsappBotMode !== "off";
       const ownerAccess=el.ownerAccess.value === "true";
       const ownerCode=digits(el.ownerCode.value).slice(0,4)||"1234";
+      const statsSettingsCode=digits(el.statsSettingsCode.value).slice(0,4)||"4321";
 
       el.businessId.value=businessId;
       el.whatsappNumber.value=whatsappNumber;
       el.ownerCode.value=ownerCode;
+      el.statsSettingsCode.value=statsSettingsCode;
 
       if(!businessName){showToast("חסר שם עסק",true);return}
       if(!businessId){showToast("חסר businessId תקין",true);return}
@@ -1019,6 +1024,7 @@
           clientOwnerAccess:ownerAccess,
           plan:whatsappBotMode === "central" ? "whatsapp-central" : (whatsappBotMode === "private" ? "whatsapp-private" : "basic"),
           ownerCode,
+          statsSettingsCode,
           appUrl:appLink(businessId),
           whatsappUrl:waLink(businessId,whatsappNumber,whatsappBotMode),
           updatedAtMs:now,
@@ -1160,7 +1166,7 @@
           <div class="business-top">
             <div>
               <div class="business-title">${html(name)}</div>
-              <div class="meta">ID: ${html(id)}<br>וואטסאפ: ${html(phone||"-")}<br>מצב וואטסאפ: ${html(whatsappModeLabel(b))}<br>Phone Number ID: ${html(b.whatsappPhoneNumberId||b.phoneNumberId||"-")}<br>שירות וואטסאפ: ${whatsappOn ? "פעיל" : "כבוי"}${whatsappMode === "central" ? `<br>מספר בוט מרכזי: ${html(CENTRAL_BOT_WHATSAPP_NUMBER)}` : ``}<br>גישת בעל עסק: ${ownerOpen ? "פתוחה" : "סגורה"}<br>קוד בעל עסק: ${html(b.ownerCode||"-")}<br>תאריך פתיחה: ${html(businessCreatedDate(b))}</div>
+              <div class="meta">ID: ${html(id)}<br>וואטסאפ: ${html(phone||"-")}<br>מצב וואטסאפ: ${html(whatsappModeLabel(b))}<br>Phone Number ID: ${html(b.whatsappPhoneNumberId||b.phoneNumberId||"-")}<br>שירות וואטסאפ: ${whatsappOn ? "פעיל" : "כבוי"}${whatsappMode === "central" ? `<br>מספר בוט מרכזי: ${html(CENTRAL_BOT_WHATSAPP_NUMBER)}` : ``}<br>גישת בעל עסק: ${ownerOpen ? "פתוחה" : "סגורה"}<br>קוד תורים/לקוחות: ${html(b.ownerCode||"-")}<br>קוד סטטיסטיקה/הגדרות: ${html(b.statsSettingsCode||"-")}<br>תאריך פתיחה: ${html(businessCreatedDate(b))}</div>
             </div>
             <div class="business-badges"><span class="badge ${badgeClass}">${whatsappOn ? "וואטסאפ: "+whatsappModeLabel(b) : "אפליקציה בלבד"}</span><span class="badge ${ownerOpen ? "pro" : ""}">${ownerOpen ? "גישה פתוחה" : "שליטה אצלך"}</span>${isBusinessFrozen(b) ? `<span class="badge frozen">מוקפא</span>` : ``}</div>
           </div>
@@ -1233,6 +1239,7 @@
     el.businessId.addEventListener("input",()=>el.businessId.value=cleanId(el.businessId.value));
     el.whatsappNumber.addEventListener("input",()=>el.whatsappNumber.value=cleanPhone(el.whatsappNumber.value));
     el.ownerCode.addEventListener("input",()=>el.ownerCode.value=digits(el.ownerCode.value).slice(0,4));
+    el.statsSettingsCode.addEventListener("input",()=>el.statsSettingsCode.value=digits(el.statsSettingsCode.value).slice(0,4));
     el.saveBtn.addEventListener("click",saveBusiness);
     el.resetBtn.addEventListener("click",resetForm);
     el.refreshBtn.addEventListener("click",subscribe);
